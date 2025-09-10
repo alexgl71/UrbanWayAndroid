@@ -88,7 +88,7 @@ fun UrbanWayMapView(
         ) {
         // Imperative marker diffing and reuse to prevent flicker
         val density = LocalDensity.current
-        val busIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeBusMarkerDescriptor(density, 28.dp) }
+        val busIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeBusMarkerDescriptor(density, 24.dp) }
         val bounds = visibleBounds
         val centerNow = cameraPositionState.position.target
         val zoomNow = cameraPositionState.position.zoom

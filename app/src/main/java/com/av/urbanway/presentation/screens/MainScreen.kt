@@ -22,6 +22,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -180,44 +182,77 @@ fun MainScreen() {
 
         // Fixed-position FAB to toggle sheet expansion (does not move with the sheet)
         if (showBottomSheet) {
-            val fabSize = 56.dp
+            val fabSize = 64.dp
             val haptics = LocalHapticFeedback.current
             val navy = Color(0xFF0B3D91)
-            val scaleX by animateFloatAsState(
+            val brand = Color(0xFFD9731F)
+            val chevronFlipScaleX by animateFloatAsState(
                 targetValue = if (isBottomSheetExpanded) -1f else 1f,
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
                 label = "chevronFlip"
             )
-            Surface(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                    viewModel.toggleBottomSheetExpanded()
-                },
-                color = if (isBottomSheetExpanded) Color.White.copy(alpha = 0.9f) else Color.White,
-                shape = CircleShape,
-                tonalElevation = 8.dp,
-                shadowElevation = 12.dp,
+            // Attention-drawing halo animation (manual loop for broad Compose compatibility)
+            val pulseScale = remember { Animatable(1f) }
+            val pulseAlpha = remember { Animatable(0.35f) }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    pulseScale.animateTo(1.35f, animationSpec = tween(durationMillis = 1200))
+                    pulseScale.snapTo(1f)
+                }
+            }
+            LaunchedEffect(Unit) {
+                while (true) {
+                    pulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 1200))
+                    pulseAlpha.snapTo(0.35f)
+                }
+            }
+
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = (-110).dp) // DO NOT TOUCH
-                    .size(fabSize)
-                    .zIndex(2f)
-                    .border(width = 2.dp, color = navy.copy(alpha = 0.15f), shape = CircleShape)
+                    .offset(y = (-106).dp)
+                    .zIndex(5f)
             ) {
+                // Pulsing halo behind the FAB
                 Box(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .background(Color.Transparent),
-                    contentAlignment = Alignment.Center
+                        .size(fabSize)
+                        .graphicsLayer {
+                            this.scaleX = pulseScale.value
+                            this.scaleY = pulseScale.value
+                            this.alpha = pulseAlpha.value
+                        }
+                        .background(brand.copy(alpha = 0.55f), CircleShape)
+                )
+                // Actual FAB with navy border
+                Surface(
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        viewModel.toggleBottomSheetExpanded()
+                    },
+                    color = brand,
+                    shape = CircleShape,
+                    tonalElevation = 10.dp,
+                    shadowElevation = 18.dp,
+                    modifier = Modifier
+                        .size(fabSize)
+                        .border(width = 3.dp, color = navy.copy(alpha = 0.45f), shape = CircleShape)
                 ) {
-                    Icon(
-                        imageVector = if (isBottomSheetExpanded) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
-                        contentDescription = if (isBottomSheetExpanded) "Collapse" else "Expand",
-                        tint = navy,
+                    Box(
                         modifier = Modifier
-                            .size(24.dp)
-                            .graphicsLayer { this.scaleX = scaleX }
-                    )
+                            .fillMaxSize()
+                            .background(Color.Transparent),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = if (isBottomSheetExpanded) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
+                            contentDescription = if (isBottomSheetExpanded) "Collapse" else "Expand",
+                            tint = Color.White,
+                            modifier = Modifier
+                                .size(30.dp)
+                                .graphicsLayer { this.scaleX = chevronFlipScaleX }
+                        )
+                    }
                 }
             }
         }

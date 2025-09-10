@@ -7,14 +7,16 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DirectionsBus
+import androidx.compose.material.icons.filled.Tram
+import androidx.compose.material.icons.filled.Subway
 import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RemoveCircle
+import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
@@ -22,12 +24,14 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.av.urbanway.data.models.StopInfo
 import com.av.urbanway.data.models.WaitingTime
 import com.av.urbanway.data.models.PinnedArrival
 import android.util.Log
+import androidx.compose.ui.Alignment
 
 @Composable
 fun ArrivalsCards(
@@ -109,18 +113,18 @@ private fun ArrivalsCard(
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF0F0F3))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .background(Color(0xFFF8F9FA))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             leading()
             Spacer(Modifier.width(8.dp))
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             LivePill()
         }
 
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(16.dp)) {
             items.forEachIndexed { index, triple ->
                 val rep = triple.second
                 val groupList = triple.third
@@ -134,9 +138,6 @@ private fun ArrivalsCard(
                         onPin = onPin,
                         onUnpin = onUnpin
                     )
-                }
-                if (index < items.lastIndex) {
-                    Divider(color = Color.Black.copy(alpha = 0.08f))
                 }
             }
         }
@@ -166,13 +167,13 @@ private fun ArrivalsEmptyCard() {
         Row(
             Modifier
                 .fillMaxWidth()
-                .background(Color(0xFFF0F0F3))
-                .padding(horizontal = 12.dp, vertical = 8.dp),
+                .background(Color(0xFFF8F9FA))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(Icons.Filled.AccessTime, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("LINEE IN ARRIVO", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold)
+            Text("LINEE IN ARRIVO", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Spacer(Modifier.weight(1f))
             LivePill()
         }
@@ -258,81 +259,170 @@ private fun ArrivalRow(
         Row(
             Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 14.dp),
+            verticalAlignment = Alignment.Top
         ) {
-        // Route circle (larger)
-        Box(
-            modifier = Modifier
-                .size(52.dp)
-                .clip(CircleShape)
-                .background(Color(0xFF007AFF)),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = displayRoute(rep.route),
-                color = Color.White,
-                fontWeight = FontWeight.SemiBold,
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontSize = 15.sp,
-                    letterSpacing = (-0.8).sp
-                )
-            )
-        }
-        Spacer(Modifier.width(12.dp))
-
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Filled.DirectionsBus, contentDescription = null, tint = Color(0xFF1E88E5))
-                Spacer(Modifier.width(6.dp))
-                Text(rep.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.W500, maxLines = 1)
+            // Column 1: Route badge with integrated transport icon
+            Box(
+                modifier = Modifier
+                    .width(60.dp)
+                    .height(60.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color(0xFF0B3D91).copy(alpha = 0.55f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Spacer(Modifier.height(2.dp))
+                    // Transport icon at the top - larger
+                    Icon(
+                        imageVector = getTransportIcon(rep.route),
+                        contentDescription = null,
+                        tint = Color.White,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.height(2.dp))
+                    // Route number at the bottom - larger and more readable
+                    Text(
+                        text = displayRoute(rep.route),
+                        color = Color.White,
+                        fontWeight = FontWeight.W300,
+                        style = MaterialTheme.typography.labelLarge.copy(
+                            fontSize = 20.sp,
+                            letterSpacing = (-0.1).sp
+                        ),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Spacer(Modifier.height(2.dp))
+                }
             }
-            Spacer(Modifier.height(2.dp))
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val shown = timesAtStop.take(3)
-                val remaining = (timesAtStop.size - shown.size).coerceAtLeast(0)
-                shown.forEachIndexed { i, waitingTime ->
-                    if (i > 0) Spacer(Modifier.width(12.dp))
-                    // Use different icons for real-time vs scheduled
-                    if (waitingTime.isRealTime) {
-                        Icon(
-                            Icons.Filled.RadioButtonChecked,
-                            contentDescription = null,
-                            tint = Color(0xFF34C759),
-                            modifier = Modifier.size(14.dp)
-                        )
-                    } else {
-                        Icon(
-                            Icons.Filled.AccessTime,
-                            contentDescription = null,
-                            tint = Color.Gray,
-                            modifier = Modifier.size(14.dp)
+            
+            Spacer(Modifier.width(16.dp))
+            // Column 2: Split into two rows
+            Column(
+                modifier = Modifier.weight(1f)
+            ) {
+
+                // Row 1: Headsign
+                Text(
+                    text = rep.destination,
+                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF555555),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                // Row 2: Fermata stopname and right aligned the distance
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    val stopName = nearbyStops.firstOrNull { it.stopId == rep.stopId }?.stopName.toString()
+                    Text(stopName, style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp))
+                    Spacer(Modifier.weight(1f))
+
+                    // Distance on the right
+                    val stopDistance = nearbyStops.firstOrNull { it.stopId == rep.stopId }?.distanceToStop
+                    if (stopDistance != null) {
+                        Text(
+                            text = "${stopDistance}mt",
+                            color = Color.Gray,
+                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp),
+                            fontWeight = FontWeight.Medium
                         )
                     }
-                    Spacer(Modifier.width(4.dp))
-                    Text(
-                        text = if (waitingTime.minutes == 0) "Ora" else "${waitingTime.minutes}'",
-                        color = if (waitingTime.isRealTime) Color(0xFF34C759) else Color.Gray,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontWeight = if (waitingTime.isRealTime) FontWeight.Medium else FontWeight.Normal
-                    )
                 }
-                if (remaining > 0) {
-                    Spacer(Modifier.width(12.dp))
-                    Text("+${remaining}", color = Color.Gray)
+
+                Spacer(Modifier.height(2.dp))
+                // Row 3: Arrival times (left) and distance (right)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // Arrival times on the left
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        val shown = timesAtStop.take(3)
+                        val remaining = (timesAtStop.size - shown.size).coerceAtLeast(0)
+                        shown.forEachIndexed { i, waitingTime ->
+                            if (i > 0) Spacer(Modifier.width(16.dp))
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = if (waitingTime.minutes <= 0) "Ora" else "${waitingTime.minutes}'",
+                                    color = if (waitingTime.isRealTime) Color(0xFF34C759) else Color.Gray,
+                                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 18.sp),
+                                    fontWeight = if (waitingTime.isRealTime) FontWeight.Bold else FontWeight.Normal
+                                )
+                                Spacer(Modifier.width(2.dp))
+                                // Icon after the text - sync for real-time, clock for scheduled
+                                if (waitingTime.isRealTime) {
+                                    Icon(
+                                        Icons.Filled.Sync,
+                                        contentDescription = null,
+                                        tint = Color(0xFF34C759),
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                } else {
+                                    Icon(
+                                        Icons.Filled.AccessTime,
+                                        contentDescription = null,
+                                        tint = Color.Gray,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                        }
+                        if (remaining > 0) {
+                            Spacer(Modifier.width(16.dp))
+                            Text(
+                                text = "+${remaining}",
+                                color = Color.Gray,
+                                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp),
+                                fontWeight = FontWeight.Medium
+                            )
+                        }
+                    }
+
+
                 }
+                Spacer(Modifier.height(2.dp))
+
+
             }
-        }
         }
     }
 }
 
 private fun displayRoute(route: String): String {
+    return cleanRoute(route)
+}
+
+private fun getTransportIcon(route: String): androidx.compose.ui.graphics.vector.ImageVector {
+    val cleanedRoute = cleanRoute(route)
+    
+    // Metro/Subway routes
+    if (cleanedRoute == "M1S" || cleanedRoute == "M1" || cleanedRoute.startsWith("METRO")) {
+        return Icons.Default.Subway
+    }
+    
+    // Tram routes
+    if (cleanedRoute in listOf("3", "4", "9", "10", "13", "15", "16CS", "16CD")) {
+        return Icons.Default.Tram
+    }
+    
+    // Default to bus for all other routes
+    return Icons.Filled.DirectionsBus
+}
+
+private fun cleanRoute(route: String): String {
     val upper = route.uppercase()
     // Metro lines should display as M1
     if (upper.startsWith("METRO")) return "M1"
-    // Drop trailing letter suffix (e.g., 56U -> 56, ST1U -> ST1)
-    return if (route.isNotEmpty() && route.last().isLetter()) route.dropLast(1) else route
+    // Drop trailing letter suffix (e.g., 56U -> 56, ST1U -> ST1, 9U -> 9)
+    return if (route.isNotEmpty() && route.last().isLetter()) route.dropLast(1).uppercase() else upper
 }
 
 // Group reps
