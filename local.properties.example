@@ -1,0 +1,18 @@
+# This file contains the mapping of SDK to the Android SDK path.
+# For more details on the Android SDK location, please visit the guide at:
+# https://developer.android.com/studio/projects/gradle-external-dependencies
+
+# Android SDK location
+sdk.dir=/Users/YourUsername/Library/Android/sdk
+
+# Google Maps API Key
+# Get your API key from: https://console.cloud.google.com/apis/credentials
+# Enable the following APIs:
+# - Maps SDK for Android
+# - Places API
+# - Geocoding API
+# - Roads API (optional, for route snapping)
+GOOGLE_MAPS_API_KEY=YOUR_API_KEY_HERE
+
+# Example:
+# GOOGLE_MAPS_API_KEY=AIzaSyBdVl-cTICSwYKrZ95SuvNw7dbMuDt1KG0
