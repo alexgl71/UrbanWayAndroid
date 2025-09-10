@@ -74,26 +74,27 @@ fun DraggableBottomSheet(
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 12.dp), 
+                        .padding(bottom = 6.dp), 
                     contentAlignment = Alignment.BottomCenter
                 ) {
                     Surface(
                         color = Color.White,
                         shape = CircleShape,
-                        tonalElevation = 3.dp,
-                        shadowElevation = 6.dp,
+                        tonalElevation = 4.dp,
+                        shadowElevation = 8.dp,
                         modifier = Modifier
                     ) {
                         IconButton(
                             onClick = { viewModel.toggleBottomSheetExpanded() },
                             modifier = Modifier
-                                .size(48.dp)
+                                .size(56.dp)
                                 .border(width = 2.dp, color = Navy, shape = CircleShape)
                         ) {
                             Icon(
                                 imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                                 contentDescription = null,
-                                tint = Navy
+                                tint = Navy,
+                                modifier = Modifier.size(24.dp)
                             )
                         }
                     }
