@@ -8,6 +8,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.zIndex
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -35,6 +37,7 @@ import com.av.urbanway.data.models.UIState
 import com.av.urbanway.presentation.components.DraggableBottomSheet
 import com.av.urbanway.presentation.components.HomePage
 import com.av.urbanway.presentation.components.ToastView
+import com.av.urbanway.presentation.components.ContextualFABButtons
 import com.av.urbanway.presentation.navigation.Screen
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 
@@ -180,30 +183,37 @@ fun MainScreen() {
             )
         }
 
-        // Fixed-position FAB to toggle sheet expansion (does not move with the sheet)
+        // iOS-style FAB with animations (chevron ↔ X)
         if (showBottomSheet) {
-            val fabSize = 64.dp
+            val fabSize = 56.dp
             val haptics = LocalHapticFeedback.current
-            val navy = Color(0xFF0B3D91)
-            val brand = Color(0xFFD9731F)
-            val chevronFlipScaleX by animateFloatAsState(
-                targetValue = if (isBottomSheetExpanded) -1f else 1f,
-                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
-                label = "chevronFlip"
+            
+            // Smooth icon transition animation
+            val iconRotation by animateFloatAsState(
+                targetValue = if (isBottomSheetExpanded) 180f else 0f,
+                animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
+                label = "iconRotation"
             )
-            // Attention-drawing halo animation (manual loop for broad Compose compatibility)
+            
+            // Subtle pulsing animation when collapsed (to invite interaction)
             val pulseScale = remember { Animatable(1f) }
-            val pulseAlpha = remember { Animatable(0.35f) }
-            LaunchedEffect(Unit) {
-                while (true) {
-                    pulseScale.animateTo(1.35f, animationSpec = tween(durationMillis = 1200))
-                    pulseScale.snapTo(1f)
+            val pulseAlpha = remember { Animatable(0.2f) }
+            
+            LaunchedEffect(isBottomSheetExpanded) {
+                if (!isBottomSheetExpanded) {
+                    while (true) {
+                        pulseScale.animateTo(1.1f, animationSpec = tween(durationMillis = 1000))
+                        pulseScale.snapTo(1f)
+                    }
                 }
             }
-            LaunchedEffect(Unit) {
-                while (true) {
-                    pulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 1200))
-                    pulseAlpha.snapTo(0.35f)
+            
+            LaunchedEffect(isBottomSheetExpanded) {
+                if (!isBottomSheetExpanded) {
+                    while (true) {
+                        pulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 1000))
+                        pulseAlpha.snapTo(0.2f)
+                    }
                 }
             }
 
@@ -213,48 +223,64 @@ fun MainScreen() {
                     .offset(y = (-106).dp)
                     .zIndex(5f)
             ) {
-                // Pulsing halo behind the FAB
-                Box(
-                    modifier = Modifier
-                        .size(fabSize)
-                        .graphicsLayer {
-                            this.scaleX = pulseScale.value
-                            this.scaleY = pulseScale.value
-                            this.alpha = pulseAlpha.value
-                        }
-                        .background(brand.copy(alpha = 0.55f), CircleShape)
-                )
-                // Actual FAB with navy border
+                // Subtle pulsing halo (only when collapsed)
+                if (!isBottomSheetExpanded) {
+                    Box(
+                        modifier = Modifier
+                            .size(fabSize)
+                            .scale(pulseScale.value)
+                            .background(
+                                Color(0xFFD9731F).copy(alpha = pulseAlpha.value),
+                                CircleShape
+                            )
+                    )
+                }
+                
+                // Main FAB - iOS style
                 Surface(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                         viewModel.toggleBottomSheetExpanded()
                     },
-                    color = brand,
+                    modifier = Modifier.size(fabSize),
                     shape = CircleShape,
-                    tonalElevation = 10.dp,
-                    shadowElevation = 18.dp,
-                    modifier = Modifier
-                        .size(fabSize)
-                        .border(width = 3.dp, color = navy.copy(alpha = 0.45f), shape = CircleShape)
+                    color = Color.White.copy(alpha = 0.95f),
+                    shadowElevation = 8.dp,
+                    border = androidx.compose.foundation.BorderStroke(
+                        width = 1.dp,
+                        color = Color.Gray.copy(alpha = 0.2f)
+                    )
                 ) {
                     Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(Color.Transparent),
-                        contentAlignment = Alignment.Center
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
-                            imageVector = if (isBottomSheetExpanded) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
-                            contentDescription = if (isBottomSheetExpanded) "Collapse" else "Expand",
-                            tint = Color.White,
+                            imageVector = if (isBottomSheetExpanded) Icons.Filled.Close else Icons.Filled.ExpandLess,
+                            contentDescription = if (isBottomSheetExpanded) "Close" else "Expand",
+                            tint = Color(0xFF333333),
                             modifier = Modifier
-                                .size(30.dp)
-                                .graphicsLayer { this.scaleX = chevronFlipScaleX }
+                                .size(24.dp)
+                                .graphicsLayer { rotationZ = iconRotation }
                         )
                     }
                 }
             }
+        }
+        
+        // Contextual buttons that animate around the FAB
+        if (showBottomSheet) {
+            ContextualFABButtons(
+                showButtons = isBottomSheetExpanded, // Show buttons when sheet is expanded
+                onNotificationsClick = { /* Handle notifications */ },
+                onWalkingDirectionsClick = { /* Handle walking directions */ },
+                onHistoryClick = { /* Handle history */ },
+                onMenuClick = { /* Handle menu */ },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-100).dp)
+                    .zIndex(4f) // Behind the FAB
+            )
         }
 
         // Global Toast Overlay
