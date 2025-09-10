@@ -75,26 +75,28 @@ fun DraggableBottomSheet(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    FloatingActionButton(
+                    Surface(
                         onClick = { viewModel.toggleBottomSheetExpanded() },
-                        containerColor = Color.White,
-                        contentColor = Navy,
+                        color = Color.White,
                         shape = CircleShape,
-                        elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 8.dp,
-                            pressedElevation = 12.dp
-                        ),
+                        tonalElevation = 8.dp,
+                        shadowElevation = 12.dp,
                         modifier = Modifier
                             .offset(y = (-40).dp)
                             .size(56.dp)
                             .border(width = 2.dp, color = Navy.copy(alpha = 0.15f), shape = CircleShape)
                     ) {
-                        Icon(
-                            imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                            contentDescription = if (expanded) "Collapse" else "Expand",
-                            tint = Navy,
-                            modifier = Modifier.size(24.dp)
-                        )
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                contentDescription = if (expanded) "Collapse" else "Expand",
+                                tint = Navy,
+                                modifier = Modifier.size(24.dp)
+                            )
+                        }
                     }
                 }
 
