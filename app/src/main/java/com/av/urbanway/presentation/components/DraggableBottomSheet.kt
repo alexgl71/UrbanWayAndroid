@@ -14,6 +14,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,28 +49,49 @@ fun DraggableBottomSheet(
             colors = CardDefaults.cardColors(containerColor = Color.White)
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
-            // Shared map as background (streets-only style)
-            UrbanWayMapView(
-                currentLocation = currentLocation.coordinates,
-                mapConfig = GoogleMapsConfig.getInstance(context),
-                modifier = Modifier.matchParentSize()
-            )
-
-            // Foreground content
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(vertical = 12.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                // Address pill under the top edge
-                AddressPill(
-                    address = currentLocation.address,
-                    modifier = Modifier
-                        .padding(top = 4.dp)
-                        .fillMaxWidth()
-                        .padding(horizontal = 20.dp)
+                // Shared map as background (streets-only style)
+                UrbanWayMapView(
+                    currentLocation = currentLocation.coordinates,
+                    mapConfig = GoogleMapsConfig.getInstance(context),
+                    modifier = Modifier.fillMaxSize()
                 )
+
+                // Foreground content
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    // Address pill under the top edge
+                    AddressPill(
+                        address = currentLocation.address,
+                        modifier = Modifier
+                            .padding(top = 4.dp)
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp)
+                    )
+
+                    Spacer(Modifier.height(12.dp))
+
+                    if (expanded) {
+                        // Quick destination categories (chips)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf("Ospedali", "Università", "Musei", "Shopping").forEach { label ->
+                                AssistChip(
+                                    onClick = { onSearchOpen() },
+                                    label = { Text(label, fontWeight = FontWeight.Medium) }
+                                )
+                            }
+                        }
+                    }
+                }
+
                 // Bottom-center FAB to expand/collapse sheet (iOS-style positioning)  
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -99,27 +121,6 @@ fun DraggableBottomSheet(
                         }
                     }
                 }
-
-                Spacer(Modifier.height(12.dp))
-
-                if (expanded) {
-                    // Quick destination categories (chips)
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        listOf("Ospedali", "Università", "Musei", "Shopping").forEach { label ->
-                            AssistChip(
-                                onClick = { onSearchOpen() },
-                                label = { Text(label, fontWeight = FontWeight.Medium) }
-                            )
-                        }
-                    }
-                }
-
-            }
             }
         }
     }
