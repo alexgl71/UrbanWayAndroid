@@ -80,19 +80,19 @@ fun DraggableBottomSheet(
                         containerColor = Color.White,
                         contentColor = Navy,
                         elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 6.dp,
-                            pressedElevation = 8.dp
+                            defaultElevation = 8.dp,
+                            pressedElevation = 12.dp
                         ),
                         modifier = Modifier
-                            .offset(y = (-16).dp)
-                            .size(56.dp)
-                            .border(width = 1.5.dp, color = Navy.copy(alpha = 0.2f), shape = CircleShape)
+                            .offset(y = (-24).dp)
+                            .size(60.dp)
+                            .border(width = 2.dp, color = Navy.copy(alpha = 0.3f), shape = CircleShape)
                     ) {
                         Icon(
                             imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                             contentDescription = if (expanded) "Collapse" else "Expand",
                             tint = Navy,
-                            modifier = Modifier.size(28.dp)
+                            modifier = Modifier.size(32.dp)
                         )
                     }
                 }

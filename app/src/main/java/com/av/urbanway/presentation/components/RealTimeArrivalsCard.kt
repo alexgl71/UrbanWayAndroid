@@ -254,7 +254,7 @@ private fun RouteHeader(route: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(32.dp)
                 .clip(CircleShape)
                 .background(routeColor.copy(alpha = 0.1f)),
             contentAlignment = Alignment.Center
@@ -262,11 +262,12 @@ private fun RouteHeader(route: String) {
             Text(
                 routeDisplay,
                 color = routeColor,
-                fontWeight = FontWeight.Bold,
-                style = MaterialTheme.typography.labelLarge.copy(
-                    letterSpacing = (-0.5).sp
+                fontWeight = FontWeight.ExtraBold,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    letterSpacing = (-1.2).sp
                 ),
-                modifier = Modifier.padding(horizontal = 4.dp)
+                modifier = Modifier.padding(horizontal = 2.dp)
             )
         }
         Spacer(Modifier.width(8.dp))
