@@ -16,6 +16,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.av.urbanway.data.local.FavoritesManager
 import com.av.urbanway.data.models.ArrivalDisplay
 import kotlinx.coroutines.launch
@@ -261,8 +262,10 @@ private fun RouteHeader(route: String) {
             Text(
                 routeDisplay,
                 color = routeColor,
-                fontWeight = FontWeight.Medium,
-                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    letterSpacing = (-0.5).sp
+                ),
                 modifier = Modifier.padding(horizontal = 4.dp)
             )
         }

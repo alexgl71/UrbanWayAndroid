@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.av.urbanway.data.models.NearbyDeparturesResponse
 import com.av.urbanway.data.models.UIState
 import com.av.urbanway.presentation.viewmodels.MainViewModel
@@ -71,29 +72,33 @@ private fun SearchBar(
     modifier: Modifier = Modifier
 ) {
     Card(
-        shape = RoundedCornerShape(18.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.96f)),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        shape = RoundedCornerShape(20.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.98f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         modifier = modifier
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(48.dp)
-                .padding(horizontal = 14.dp)
+                .height(52.dp)
+                .padding(horizontal = 16.dp)
                 .clickable { onClick() },
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
                 imageVector = Icons.Filled.Search,
                 contentDescription = null,
-                tint = Color(0xFF666666)
+                tint = Color(0xFF8A8A8A),
+                modifier = Modifier.size(20.dp)
             )
-            Spacer(Modifier.width(10.dp))
+            Spacer(Modifier.width(12.dp))
             Text(
                 text = placeholder,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color(0xFF666666)
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontWeight = FontWeight.Medium,
+                    letterSpacing = 0.2.sp
+                ),
+                color = Color(0xFF8A8A8A)
             )
         }
     }

@@ -20,6 +20,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import com.av.urbanway.data.models.StopInfo
@@ -262,7 +263,7 @@ private fun ArrivalRow(
         // Route circle
         Box(
             modifier = Modifier
-                .size(44.dp)
+                .size(48.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF1E88E5)),
             contentAlignment = Alignment.Center
@@ -270,8 +271,10 @@ private fun ArrivalRow(
             Text(
                 text = displayRoute(rep.route),
                 color = Color.White,
-                fontWeight = FontWeight.Medium,
-                style = MaterialTheme.typography.bodyMedium
+                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelLarge.copy(
+                    letterSpacing = (-0.5).sp
+                )
             )
         }
         Spacer(Modifier.width(12.dp))
@@ -280,9 +283,9 @@ private fun ArrivalRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Filled.DirectionsBus, contentDescription = null, tint = Color(0xFF1E88E5))
                 Spacer(Modifier.width(6.dp))
-                Text(rep.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, maxLines = 1)
+                Text(rep.destination, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.W500, maxLines = 1)
             }
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(2.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val shown = timesAtStop.take(3)
                 val remaining = (timesAtStop.size - shown.size).coerceAtLeast(0)

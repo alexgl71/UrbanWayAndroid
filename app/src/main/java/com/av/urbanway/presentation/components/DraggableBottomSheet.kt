@@ -70,33 +70,30 @@ fun DraggableBottomSheet(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
                 )
-                // Bottom-center FAB to expand/collapse sheet
+                // Bottom-center FAB to expand/collapse sheet (iOS-style positioning)
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 6.dp), 
+                    modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.BottomCenter
                 ) {
-                    Surface(
-                        color = Color.White,
-                        shape = CircleShape,
-                        tonalElevation = 4.dp,
-                        shadowElevation = 8.dp,
+                    FloatingActionButton(
+                        onClick = { viewModel.toggleBottomSheetExpanded() },
+                        containerColor = Color.White,
+                        contentColor = Navy,
+                        elevation = FloatingActionButtonDefaults.elevation(
+                            defaultElevation = 6.dp,
+                            pressedElevation = 8.dp
+                        ),
                         modifier = Modifier
+                            .offset(y = (-16).dp)
+                            .size(56.dp)
+                            .border(width = 1.5.dp, color = Navy.copy(alpha = 0.2f), shape = CircleShape)
                     ) {
-                        IconButton(
-                            onClick = { viewModel.toggleBottomSheetExpanded() },
-                            modifier = Modifier
-                                .size(56.dp)
-                                .border(width = 2.dp, color = Navy, shape = CircleShape)
-                        ) {
-                            Icon(
-                                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                contentDescription = null,
-                                tint = Navy,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
+                        Icon(
+                            imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                            contentDescription = if (expanded) "Collapse" else "Expand",
+                            tint = Navy,
+                            modifier = Modifier.size(28.dp)
+                        )
                     }
                 }
 
