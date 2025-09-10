@@ -262,7 +262,7 @@ private fun ArrivalRow(
         // Route circle
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(36.dp)
                 .clip(CircleShape)
                 .background(Color(0xFF1E88E5)),
             contentAlignment = Alignment.Center
@@ -270,7 +270,8 @@ private fun ArrivalRow(
             Text(
                 text = displayRoute(rep.route),
                 color = Color.White,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                style = MaterialTheme.typography.bodySmall
             )
         }
         Spacer(Modifier.width(12.dp))

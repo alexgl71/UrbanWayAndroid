@@ -71,20 +71,23 @@ fun DraggableBottomSheet(
                         .padding(horizontal = 20.dp)
                 )
                 // Bottom-center FAB to expand/collapse sheet
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(bottom = 12.dp), 
+                    contentAlignment = Alignment.BottomCenter
+                ) {
                     Surface(
                         color = Color.White,
                         shape = CircleShape,
                         tonalElevation = 3.dp,
                         shadowElevation = 6.dp,
                         modifier = Modifier
-                            // Reduce vertical lift so the button shape isn't clipped
-                            .offset(y = (-18).dp)
                     ) {
                         IconButton(
                             onClick = { viewModel.toggleBottomSheetExpanded() },
                             modifier = Modifier
-                                .size(56.dp)
+                                .size(48.dp)
                                 .border(width = 2.dp, color = Navy, shape = CircleShape)
                         ) {
                             Icon(
