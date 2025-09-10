@@ -84,6 +84,15 @@ class TransitRepositoryImpl private constructor(
         }
     }
 
+    override suspend fun getStopsSync(): APIResult<List<StopChangePayload>> {
+        return try {
+            val res = apiService.getStopsSync()
+            APIResult.Success(res)
+        } catch (e: Exception) {
+            APIResult.Error(e)
+        }
+    }
+
     override suspend fun refreshNearbyDepartures(
         latitude: Double,
         longitude: Double

@@ -1,6 +1,7 @@
 package com.av.urbanway.presentation.screens
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.foundation.shape.CircleShape
@@ -12,9 +13,15 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -39,6 +46,7 @@ fun MainScreen() {
     
     val uiState by viewModel.uiState.collectAsState()
     val showBottomSheet by viewModel.showBottomSheet.collectAsState()
+    val isBottomSheetExpanded by viewModel.isBottomSheetExpanded.collectAsState()
     val toastMessage by viewModel.toastMessage.collectAsState()
     val alertMessage by viewModel.alertMessage.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
@@ -68,6 +76,11 @@ fun MainScreen() {
         if (hasLocationPermission) {
             viewModel.onLocationPermissionGranted()
         }
+    }
+
+    // Bootstrap full stops catalog (download once or load from disk)
+    LaunchedEffect(Unit) {
+        viewModel.bootstrapStopsIfNeeded(context)
     }
 
     Box(
@@ -165,8 +178,49 @@ fun MainScreen() {
             )
         }
 
-        // Bottom-center FAB to toggle sheet expansion (no navigation)
-        // FAB is handled inside DraggableBottomSheet (to match iOS handle position)
+        // Fixed-position FAB to toggle sheet expansion (does not move with the sheet)
+        if (showBottomSheet) {
+            val fabSize = 56.dp
+            val haptics = LocalHapticFeedback.current
+            val navy = Color(0xFF0B3D91)
+            val scaleX by animateFloatAsState(
+                targetValue = if (isBottomSheetExpanded) -1f else 1f,
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessLow),
+                label = "chevronFlip"
+            )
+            Surface(
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    viewModel.toggleBottomSheetExpanded()
+                },
+                color = if (isBottomSheetExpanded) Color.White.copy(alpha = 0.9f) else Color.White,
+                shape = CircleShape,
+                tonalElevation = 8.dp,
+                shadowElevation = 12.dp,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-110).dp) // DO NOT TOUCH
+                    .size(fabSize)
+                    .zIndex(2f)
+                    .border(width = 2.dp, color = navy.copy(alpha = 0.15f), shape = CircleShape)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(Color.Transparent),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = if (isBottomSheetExpanded) Icons.Filled.ExpandMore else Icons.Filled.ExpandLess,
+                        contentDescription = if (isBottomSheetExpanded) "Collapse" else "Expand",
+                        tint = navy,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .graphicsLayer { this.scaleX = scaleX }
+                    )
+                }
+            }
+        }
 
         // Global Toast Overlay
         toastMessage?.let { message ->

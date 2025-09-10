@@ -80,7 +80,7 @@ private fun SearchBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(52.dp)
+                .height(48.dp)
                 .padding(horizontal = 16.dp)
                 .clickable { onClick() },
             verticalAlignment = Alignment.CenterVertically

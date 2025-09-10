@@ -18,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.av.urbanway.data.local.FavoritesManager
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AccessTime
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import com.av.urbanway.data.models.ArrivalDisplay
 import kotlinx.coroutines.launch
 
@@ -301,15 +304,26 @@ private fun HeadSignRow(
                 val base = if (isReal) green else Color.Gray
                 val fill = if (isReal) base.copy(alpha = 0.9f) else base.copy(alpha = 0.18f)
                 val textColor = if (isReal) Color.White else Color.Black
-                Text(
-                    text = "${mins}'",
-                    color = textColor,
-                    fontWeight = FontWeight.SemiBold,
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier
                         .clip(RoundedCornerShape(50))
                         .background(fill)
                         .padding(horizontal = 10.dp, vertical = 6.dp)
-                )
+                ) {
+                    Icon(
+                        imageVector = if (isReal) Icons.Filled.RadioButtonChecked else Icons.Filled.AccessTime,
+                        contentDescription = null,
+                        tint = textColor,
+                        modifier = Modifier.size(14.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text(
+                        text = "${mins}'",
+                        color = textColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
             if (group.times.size > 4) {
                 Spacer(Modifier.width(10.dp))

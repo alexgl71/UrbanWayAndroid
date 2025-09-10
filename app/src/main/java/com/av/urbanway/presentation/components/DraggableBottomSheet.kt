@@ -1,28 +1,54 @@
 package com.av.urbanway.presentation.components
 
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.border
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Place
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.av.urbanway.data.local.GoogleMapsConfig
 import com.av.urbanway.presentation.viewmodels.MainViewModel
+import com.av.urbanway.data.models.Coordinates
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DraggableBottomSheet(
     viewModel: MainViewModel,
@@ -32,14 +58,22 @@ fun DraggableBottomSheet(
     val context = LocalContext.current
     val showBottomSheet by viewModel.showBottomSheet.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
+    val allStops by viewModel.allStops.collectAsState()
+    val nearbyStops by viewModel.nearbyStops.collectAsState()
+    val scope = rememberCoroutineScope()
     val expanded by viewModel.isBottomSheetExpanded.collectAsState()
 
     if (!showBottomSheet) return
 
-    val Navy = Color(0xFF0B3D91)
+    val navy = Color(0xFF0B3D91)
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
-        val targetHeight = if (expanded) maxHeight - 30.dp else 120.dp
+        val rawTargetHeight = if (expanded) this.maxHeight - 30.dp else 140.dp
+        val targetHeight by animateDpAsState(
+            targetValue = rawTargetHeight,
+            animationSpec = spring(dampingRatio = 0.9f, stiffness = Spring.StiffnessMediumLow),
+            label = "sheetHeight"
+        )
         
         Card(
             modifier = Modifier
@@ -50,24 +84,44 @@ fun DraggableBottomSheet(
         ) {
             Box(modifier = Modifier.fillMaxSize()) {
                 // Shared map as background (streets-only style)
-                UrbanWayMapView(
-                    currentLocation = currentLocation.coordinates,
-                    mapConfig = GoogleMapsConfig.getInstance(context),
-                    modifier = Modifier.fillMaxSize()
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    val stopsForMap = if (allStops.isNotEmpty()) allStops else nearbyStops
+                    UrbanWayMapView(
+                        currentLocation = currentLocation.coordinates,
+                        mapConfig = GoogleMapsConfig.getInstance(context),
+                        modifier = Modifier.fillMaxSize(),
+                        stops = stopsForMap,
+                        refreshBoundsKey = expanded
+                    )
+                    // Center fixed red circle overlay (independent of the map)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(12.dp)
+                            .border(2.dp, Color.White, CircleShape)
+                            .then(Modifier)
+                    )
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.Center)
+                            .size(8.dp)
+                            .border(0.dp, Color.Transparent, CircleShape)
+                            .background(Color(0xFFE53935), CircleShape)
+                    )
+                }
 
                 // Foreground content
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(vertical = 12.dp),
+                        .padding(bottom = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Address pill under the top edge
                     AddressPill(
                         address = currentLocation.address,
                         modifier = Modifier
-                            .padding(top = 4.dp)
+                            .padding(top = 30.dp)
                             .fillMaxWidth()
                             .padding(horizontal = 20.dp)
                     )
@@ -92,37 +146,11 @@ fun DraggableBottomSheet(
                     }
                 }
 
-                // Bottom-center FAB to expand/collapse sheet (iOS-style positioning)  
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.BottomCenter
-                ) {
-                    Surface(
-                        onClick = { viewModel.toggleBottomSheetExpanded() },
-                        color = Color.White,
-                        shape = CircleShape,
-                        tonalElevation = 8.dp,
-                        shadowElevation = 12.dp,
-                        modifier = Modifier
-                            .offset(y = (-40).dp)
-                            .size(56.dp)
-                            .border(width = 2.dp, color = Navy.copy(alpha = 0.15f), shape = CircleShape)
-                    ) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
-                                contentDescription = if (expanded) "Collapse" else "Expand",
-                                tint = Navy,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
+                // FAB removed from inside the Card to avoid clipping by Card shape
             }
         }
+
+        // FAB is rendered in MainScreen at a fixed position to avoid moving with the sheet
     }
 }
 
@@ -141,6 +169,7 @@ fun AddressPill(address: String, modifier: Modifier = Modifier) {
             else -> first
         }.ifEmpty { address }
     }
+    
     Surface(
         shape = RoundedCornerShape(14.dp),
         color = Color.White,
@@ -164,4 +193,3 @@ fun AddressPill(address: String, modifier: Modifier = Modifier) {
         }
     }
 }
-    

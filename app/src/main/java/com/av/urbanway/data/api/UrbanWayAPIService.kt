@@ -7,6 +7,9 @@ import retrofit2.http.POST
 import retrofit2.http.Query
 
 interface UrbanWayAPIService {
+    // Full stops sync (delta list) used to build on-device catalog (parity with iOS)
+    @GET("api/stops/sync")
+    suspend fun getStopsSync(): List<StopChangePayload>
     
     @GET("api/departures/nearby")
     suspend fun getNearbyDepartures(

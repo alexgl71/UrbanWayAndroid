@@ -26,6 +26,8 @@ interface TransitRepository {
     ): Flow<APIResult<List<RoutesSummaryResponse>>>
     
     fun getTripDetails(tripId: String): Flow<APIResult<TripDetailsResponse>>
+
+    suspend fun getStopsSync(): APIResult<List<StopChangePayload>>
     
     suspend fun refreshNearbyDepartures(
         latitude: Double,

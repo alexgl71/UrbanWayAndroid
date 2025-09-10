@@ -92,6 +92,50 @@ class MainViewModel(
     // API Data - matching iOS
     private val _nearbyStops = MutableStateFlow<List<StopInfo>>(emptyList())
     val nearbyStops: StateFlow<List<StopInfo>> = _nearbyStops.asStateFlow()
+    // Persisted full stops dataset (used by map)
+    private val _allStops = MutableStateFlow<List<StopInfo>>(emptyList())
+    val allStops: StateFlow<List<StopInfo>> = _allStops.asStateFlow()
+
+    // Bootstrap full stops catalog if present on disk or by fetching once
+    suspend fun bootstrapStopsIfNeeded(context: Context) {
+        if (_allStops.value.isNotEmpty()) return
+        val store = com.av.urbanway.data.local.StopsCatalogStore.getInstance(context)
+        // Try loading from disk first
+        val local = store.load()
+        if (local.isNotEmpty()) {
+            _allStops.value = local
+            return
+        }
+        // Download delta list and build catalog like iOS
+        when (val res = transitRepository.getStopsSync()) {
+            is APIResult.Success -> {
+                val byId = mutableMapOf<String, StopInfo>()
+                for (chg in res.data) {
+                    val inner = try {
+                        com.google.gson.Gson().fromJson(chg.stopDataJson, com.av.urbanway.data.models.InnerStopData::class.java)
+                    } catch (e: Exception) { null }
+                    if (inner != null) {
+                        byId[inner.stopId] = StopInfo(
+                            stopId = inner.stopId,
+                            stopName = inner.stopName,
+                            stopLat = inner.stopLat,
+                            stopLon = inner.stopLon,
+                            distanceToStop = 0,
+                            routes = emptyList()
+                        )
+                    }
+                }
+                val items = byId.values.sortedBy { it.stopName }
+                _allStops.value = items
+                // Persist to disk for future boots
+                store.save(items)
+            }
+            is APIResult.Error -> {
+                // Keep empty; could show a toast/log
+                android.util.Log.e(TAG, "Stops sync failed: ${res.exception}")
+            }
+        }
+    }
     
     private val _nearbyDepartures = MutableStateFlow<List<NearbyDeparturesResponse>>(emptyList())
     val nearbyDepartures: StateFlow<List<NearbyDeparturesResponse>> = _nearbyDepartures.asStateFlow()
@@ -524,7 +568,8 @@ class MainViewModel(
         }
         
         android.util.Log.d(TAG, "Loading fresh nearby data for ${'$'}coordinates")
-        loadNearbyDeparturesAndDestinations(coordinates)
+        // Default radius tuned for initial zoom ~16
+        loadNearbyDeparturesAndDestinations(coordinates, radiusMeters = 800)
         nearbyDataLastLoaded = Date()
     }
     
@@ -547,11 +592,11 @@ class MainViewModel(
         }
         
         android.util.Log.d(TAG, "Loading realtime arrivals for ${'$'}coordinates")
-        loadNearbyDeparturesAndDestinations(coordinates)
+        loadNearbyDeparturesAndDestinations(coordinates, radiusMeters = 800)
         realtimeArrivalsLastLoaded = Date()
     }
     
-    suspend fun loadNearbyDeparturesAndDestinations(coordinates: Coordinates) {
+    suspend fun loadNearbyDeparturesAndDestinations(coordinates: Coordinates, radiusMeters: Int = 800) {
         _isLoadingDepartures.value = true
         _isLoadingDestinations.value = true
         _errorMessage.value = null
@@ -561,7 +606,9 @@ class MainViewModel(
             android.util.Log.d(TAG, "Requesting nearby departures API…")
             transitRepository.getNearbyDepartures(
                 latitude = coordinates.lat,
-                longitude = coordinates.lng
+                longitude = coordinates.lng,
+                radiusMeters = radiusMeters,
+                lookAheadMinutes = 60
             ).collect { result ->
                 when (result) {
                     is APIResult.Success -> {
@@ -760,6 +807,12 @@ class MainViewModel(
 
     fun clearToast() {
         _toastMessage.value = null
+    }
+
+    // MARK: - Stops persistence hooks
+    // Call this once (e.g., on first app launch) after downloading the full stops dataset
+    fun setAllStops(stops: List<StopInfo>) {
+        _allStops.value = stops
     }
 
 }
