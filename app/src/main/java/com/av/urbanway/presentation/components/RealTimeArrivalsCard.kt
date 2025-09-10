@@ -254,18 +254,18 @@ private fun RouteHeader(route: String) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(routeColor.copy(alpha = 0.1f)),
+                .background(routeColor.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 routeDisplay,
                 color = routeColor,
                 fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    letterSpacing = (-1.2).sp
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 12.sp,
+                    letterSpacing = (-0.8).sp
                 ),
                 modifier = Modifier.padding(horizontal = 2.dp)
             )

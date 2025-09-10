@@ -70,7 +70,7 @@ fun DraggableBottomSheet(
                         .fillMaxWidth()
                         .padding(horizontal = 20.dp)
                 )
-                // Bottom-center FAB to expand/collapse sheet (iOS-style positioning)
+                // Bottom-center FAB to expand/collapse sheet (iOS-style positioning)  
                 Box(
                     modifier = Modifier.fillMaxSize(),
                     contentAlignment = Alignment.BottomCenter
@@ -79,20 +79,21 @@ fun DraggableBottomSheet(
                         onClick = { viewModel.toggleBottomSheetExpanded() },
                         containerColor = Color.White,
                         contentColor = Navy,
+                        shape = CircleShape,
                         elevation = FloatingActionButtonDefaults.elevation(
-                            defaultElevation = 12.dp,
-                            pressedElevation = 16.dp
+                            defaultElevation = 8.dp,
+                            pressedElevation = 12.dp
                         ),
                         modifier = Modifier
-                            .offset(y = (-32).dp)
-                            .size(72.dp)
-                            .border(width = 3.dp, color = Navy.copy(alpha = 0.4f), shape = CircleShape)
+                            .offset(y = (-40).dp)
+                            .size(56.dp)
+                            .border(width = 2.dp, color = Navy.copy(alpha = 0.15f), shape = CircleShape)
                     ) {
                         Icon(
                             imageVector = if (expanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
                             contentDescription = if (expanded) "Collapse" else "Expand",
                             tint = Navy,
-                            modifier = Modifier.size(36.dp)
+                            modifier = Modifier.size(24.dp)
                         )
                     }
                 }

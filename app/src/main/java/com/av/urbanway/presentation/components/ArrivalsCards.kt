@@ -8,6 +8,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccessTime
 import androidx.compose.material.icons.filled.DirectionsBus
 import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.filled.RadioButtonChecked
 import androidx.compose.material.icons.filled.RemoveCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -184,7 +185,7 @@ private fun ArrivalsEmptyCard() {
 @Composable
 private fun ArrivalRow(
     rep: WaitingTime,
-    timesAtStop: List<Int>,
+    timesAtStop: List<WaitingTime>,
     nearbyStops: List<StopInfo>,
     isPinned: Boolean,
     onPin: (routeId: String, destination: String, stopId: String, stopName: String) -> Unit,
@@ -263,18 +264,18 @@ private fun ArrivalRow(
         // Route circle
         Box(
             modifier = Modifier
-                .size(32.dp)
+                .size(38.dp)
                 .clip(CircleShape)
-                .background(Color(0xFF1E88E5)),
+                .background(Color(0xFF007AFF)),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = displayRoute(rep.route),
                 color = Color.White,
                 fontWeight = FontWeight.ExtraBold,
-                style = MaterialTheme.typography.labelSmall.copy(
-                    fontSize = 11.sp,
-                    letterSpacing = (-1.2).sp
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontSize = 12.sp,
+                    letterSpacing = (-0.8).sp
                 )
             )
         }
@@ -290,11 +291,31 @@ private fun ArrivalRow(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 val shown = timesAtStop.take(3)
                 val remaining = (timesAtStop.size - shown.size).coerceAtLeast(0)
-                shown.forEachIndexed { i, m ->
+                shown.forEachIndexed { i, waitingTime ->
                     if (i > 0) Spacer(Modifier.width(12.dp))
-                    Icon(Icons.Filled.AccessTime, contentDescription = null, tint = Color.Gray)
+                    // Use different icons for real-time vs scheduled
+                    if (waitingTime.isRealTime) {
+                        Icon(
+                            Icons.Filled.RadioButtonChecked,
+                            contentDescription = null,
+                            tint = Color(0xFF34C759),
+                            modifier = Modifier.size(14.dp)
+                        )
+                    } else {
+                        Icon(
+                            Icons.Filled.AccessTime,
+                            contentDescription = null,
+                            tint = Color.Gray,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
                     Spacer(Modifier.width(4.dp))
-                    Text(if (m == 0) "Ora" else "${m}'", color = Color.Gray)
+                    Text(
+                        text = if (waitingTime.minutes == 0) "Ora" else "${waitingTime.minutes}'",
+                        color = if (waitingTime.isRealTime) Color(0xFF34C759) else Color.Gray,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = if (waitingTime.isRealTime) FontWeight.Medium else FontWeight.Normal
+                    )
                 }
                 if (remaining > 0) {
                     Spacer(Modifier.width(12.dp))
@@ -322,11 +343,10 @@ private fun repsForGroup(group: List<WaitingTime>, stops: List<StopInfo>): Waiti
     return group.minWithOrNull(compareBy<WaitingTime> { distanceForStop(it.stopId, stops) }.thenBy { it.minutes })
 }
 
-private fun timesForSameStopFromGroup(rep: WaitingTime, group: List<WaitingTime>): List<Int> =
+private fun timesForSameStopFromGroup(rep: WaitingTime, group: List<WaitingTime>): List<WaitingTime> =
     group.filter { it.stopId == rep.stopId }
-        .map { it.minutes }
-        .sorted()
-        .ifEmpty { listOf(rep.minutes) }
+        .sortedBy { it.minutes }
+        .ifEmpty { listOf(rep) }
 
 private fun distanceForStop(stopId: String, stops: List<StopInfo>): Int {
     return stops.firstOrNull { it.stopId == stopId }?.distanceToStop ?: Int.MAX_VALUE
