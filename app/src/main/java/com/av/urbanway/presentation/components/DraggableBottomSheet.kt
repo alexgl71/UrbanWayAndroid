@@ -111,29 +111,21 @@ fun DraggableBottomSheet(
                 }
 
                 // Foreground content
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 12.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // Address pill under the top edge
-                    AddressPill(
-                        address = currentLocation.address,
+                if (expanded) {
+                    Column(
                         modifier = Modifier
-                            .padding(top = 30.dp)
-                            .fillMaxWidth()
-                            .padding(horizontal = 20.dp)
-                    )
+                            .fillMaxSize()
+                            .padding(bottom = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        Spacer(Modifier.height(42.dp))
 
-                    Spacer(Modifier.height(12.dp))
-
-                    if (expanded) {
                         // Quick destination categories (chips)
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState()),
+                                .horizontalScroll(rememberScrollState())
+                                .padding(horizontal = 20.dp),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             listOf("Ospedali", "Università", "Musei", "Shopping").forEach { label ->
@@ -154,42 +146,3 @@ fun DraggableBottomSheet(
     }
 }
 
-@Composable
-fun AddressPill(address: String, modifier: Modifier = Modifier) {
-    // Prefer showing street + street number when the number appears after a comma
-    // e.g. "Via Roma, 5, Torino" -> "Via Roma 5"
-    val streetLine = remember(address) {
-        val parts = address.split(',')
-        val first = parts.getOrNull(0)?.trim().orEmpty()
-        val second = parts.getOrNull(1)?.trim().orEmpty()
-        when {
-            // If the second segment begins with a number (e.g., "5" or "5/A") include it
-            second.firstOrNull()?.isDigit() == true ->
-                listOf(first, second).filter { it.isNotEmpty() }.joinToString(" ")
-            else -> first
-        }.ifEmpty { address }
-    }
-    
-    Surface(
-        shape = RoundedCornerShape(14.dp),
-        color = Color.White,
-        tonalElevation = 2.dp,
-        shadowElevation = 6.dp,
-        modifier = modifier
-    ) {
-        Row(
-            modifier = Modifier
-                .height(44.dp)
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(Icons.Filled.Place, contentDescription = null, tint = Color(0xFF0B3D91))
-            Spacer(Modifier.width(8.dp))
-            Text(
-                text = streetLine,
-                style = MaterialTheme.typography.bodyMedium,
-                color = Color.Black
-            )
-        }
-    }
-}

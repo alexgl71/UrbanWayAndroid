@@ -9,6 +9,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.zIndex
 import androidx.compose.runtime.*
@@ -38,6 +44,9 @@ import com.av.urbanway.presentation.components.DraggableBottomSheet
 import com.av.urbanway.presentation.components.HomePage
 import com.av.urbanway.presentation.components.ToastView
 import com.av.urbanway.presentation.components.ContextualFABButtons
+import com.av.urbanway.presentation.components.DefaultFABButtons
+import com.av.urbanway.presentation.components.UnifiedFloatingToolbar
+import com.av.urbanway.presentation.components.ToolbarButton
 import com.av.urbanway.presentation.navigation.Screen
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 
@@ -183,6 +192,7 @@ fun MainScreen() {
             )
         }
 
+
         // iOS-style FAB with animations (chevron ↔ X)
         if (showBottomSheet) {
             val fabSize = 56.dp
@@ -247,8 +257,8 @@ fun MainScreen() {
                     color = Color.White.copy(alpha = 0.95f),
                     shadowElevation = 8.dp,
                     border = androidx.compose.foundation.BorderStroke(
-                        width = 1.dp,
-                        color = Color.Gray.copy(alpha = 0.2f)
+                        width = 2.dp,
+                        color = Color(0xFF0B3D91) // Navy blue border
                     )
                 ) {
                     Box(
@@ -268,14 +278,61 @@ fun MainScreen() {
             }
         }
         
-        // Contextual buttons that animate around the FAB
-        if (showBottomSheet) {
-            ContextualFABButtons(
-                showButtons = isBottomSheetExpanded, // Show buttons when sheet is expanded
-                onNotificationsClick = { /* Handle notifications */ },
-                onWalkingDirectionsClick = { /* Handle walking directions */ },
-                onHistoryClick = { /* Handle history */ },
-                onMenuClick = { /* Handle menu */ },
+        // Default toolbar (settings + search) - shown when bottom sheet is collapsed
+        if (showBottomSheet && !isBottomSheetExpanded) {
+            UnifiedFloatingToolbar(
+                buttons = listOf(
+                    ToolbarButton(
+                        icon = Icons.Filled.Settings,
+                        contentDescription = "Settings",
+                        onClick = { /* Handle settings */ }
+                    ),
+                    ToolbarButton(
+                        icon = Icons.Filled.Search,
+                        contentDescription = "Search", 
+                        onClick = { viewModel.openSearch() }
+                    )
+                ),
+                showButtons = true,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-100).dp)
+                    .zIndex(4f)
+            )
+        }
+        
+        // Contextual toolbar (5 buttons) - shown when bottom sheet is expanded
+        if (showBottomSheet && isBottomSheetExpanded) {
+            UnifiedFloatingToolbar(
+                buttons = listOf(
+                    ToolbarButton(
+                        icon = Icons.Filled.Notifications,
+                        contentDescription = "Notifications",
+                        onClick = { /* Handle notifications */ }
+                    ),
+                    ToolbarButton(
+                        icon = Icons.Filled.DirectionsWalk,
+                        contentDescription = "Walking Directions",
+                        onClick = { /* Handle walking directions */ }
+                    ),
+                    ToolbarButton(
+                        icon = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        onClick = { /* Handle close */ },
+                        isHighlighted = true // Highlighted center button
+                    ),
+                    ToolbarButton(
+                        icon = Icons.Filled.History,
+                        contentDescription = "History",
+                        onClick = { /* Handle history */ }
+                    ),
+                    ToolbarButton(
+                        icon = Icons.Filled.Menu,
+                        contentDescription = "Menu",
+                        onClick = { /* Handle menu */ }
+                    )
+                ),
+                showButtons = true,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .offset(y = (-100).dp)

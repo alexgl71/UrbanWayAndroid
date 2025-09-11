@@ -342,6 +342,7 @@ class MainViewModel(
     fun expandBottomSheet() { _isBottomSheetExpanded.value = true }
     fun collapseBottomSheet() { _isBottomSheetExpanded.value = false }
     fun toggleBottomSheetExpanded() { _isBottomSheetExpanded.value = !_isBottomSheetExpanded.value }
+    fun toggleBottomSheet() { _showBottomSheet.value = !_showBottomSheet.value }
     
     // Favorites
     val pinnedArrivals: StateFlow<List<PinnedArrival>> = favoritesManager.getPinnedArrivals()

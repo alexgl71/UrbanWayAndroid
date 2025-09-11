@@ -8,6 +8,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -34,6 +35,7 @@ fun HomePage(
     // Collect to trigger recomposition when API data updates
     val nearbyDepartures by viewModel.nearbyDepartures.collectAsState()
     val nearbyStops by viewModel.nearbyStops.collectAsState()
+    val currentLocation by viewModel.currentLocation.collectAsState()
 
     Column(
         modifier = Modifier
@@ -41,9 +43,9 @@ fun HomePage(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Search bar pill (tap to open search)
-        SearchBar(
-            placeholder = "Cerca fermate, linee, luoghi…",
+        // Search bar with address display
+        AddressSearchBar(
+            address = currentLocation.address,
             onClick = { viewModel.openSearch() },
             modifier = Modifier
                 .fillMaxWidth()
@@ -66,11 +68,25 @@ fun HomePage(
 }
 
 @Composable
-private fun SearchBar(
-    placeholder: String,
+private fun AddressSearchBar(
+    address: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    // Prefer showing street + street number when the number appears after a comma
+    // e.g. "Via Roma, 5, Torino" -> "Via Roma 5"
+    val streetLine = remember(address) {
+        val parts = address.split(',')
+        val first = parts.getOrNull(0)?.trim().orEmpty()
+        val second = parts.getOrNull(1)?.trim().orEmpty()
+        when {
+            // If the second segment begins with a number (e.g., "5" or "5/A") include it
+            second.firstOrNull()?.isDigit() == true ->
+                listOf(first, second).filter { it.isNotEmpty() }.joinToString(" ")
+            else -> first
+        }.ifEmpty { address }
+    }
+    
     Card(
         shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = Color.White.copy(alpha = 0.98f)),
@@ -86,19 +102,20 @@ private fun SearchBar(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = Icons.Filled.Search,
-                contentDescription = null,
-                tint = Color(0xFF8A8A8A),
+                imageVector = Icons.Filled.LocationOn,
+                contentDescription = "GPS Location",
+                tint = Color(0xFF0B3D91),
                 modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(12.dp))
             Text(
-                text = placeholder,
+                text = streetLine,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Medium,
                     letterSpacing = 0.2.sp
                 ),
-                color = Color(0xFF8A8A8A)
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
             )
         }
     }
