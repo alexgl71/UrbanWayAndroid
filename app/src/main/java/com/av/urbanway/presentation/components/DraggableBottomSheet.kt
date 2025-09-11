@@ -34,6 +34,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -62,10 +63,28 @@ fun DraggableBottomSheet(
     val nearbyStops by viewModel.nearbyStops.collectAsState()
     val scope = rememberCoroutineScope()
     val expanded by viewModel.isBottomSheetExpanded.collectAsState()
+    val selectedRoute by viewModel.selectedRoute.collectAsState()
+    val routeDetailData by viewModel.routeDetailData.collectAsState()
+    val routeTripDetails by viewModel.routeTripDetails.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val isSheetAnimating by viewModel.isSheetAnimating.collectAsState()
 
     if (!showBottomSheet) return
 
     val navy = Color(0xFF0B3D91)
+
+    // Track sheet animation completion (optimized timing)
+    LaunchedEffect(expanded) {
+        if (expanded) {
+            // Wait for expansion animation to complete + small buffer
+            kotlinx.coroutines.delay(900) // Reduced from 1000ms
+            viewModel.onSheetFullyOpened()
+        } else {
+            // Wait for collapse animation to complete + small buffer  
+            kotlinx.coroutines.delay(600) // Reduced from 800ms
+            viewModel.onSheetFullyCollapsed()
+        }
+    }
 
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val rawTargetHeight = if (expanded) this.maxHeight - 30.dp else 140.dp
@@ -91,7 +110,11 @@ fun DraggableBottomSheet(
                         mapConfig = GoogleMapsConfig.getInstance(context),
                         modifier = Modifier.fillMaxSize(),
                         stops = stopsForMap,
-                        refreshBoundsKey = expanded
+                        refreshBoundsKey = expanded,
+                        routeTripDetails = routeTripDetails,
+                        selectedStopId = routeDetailData?.get("stopId") as? String,
+                        uiState = uiState,
+                        isSheetAnimating = isSheetAnimating
                     )
                     // Center fixed red circle overlay (independent of the map)
                     Box(
@@ -110,30 +133,74 @@ fun DraggableBottomSheet(
                     )
                 }
 
-                // Foreground content
+                // Foreground content with transition
                 if (expanded) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(bottom = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Spacer(Modifier.height(42.dp))
-
-                        // Quick destination categories (chips)
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .horizontalScroll(rememberScrollState())
-                                .padding(horizontal = 20.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    if (selectedRoute != null && routeDetailData != null) {
+                        // Show loading state while waiting for trip details, then show card
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = routeTripDetails != null,
+                            enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) + 
+                                   androidx.compose.animation.slideInVertically(
+                                       animationSpec = androidx.compose.animation.core.tween(300),
+                                       initialOffsetY = { it / 4 }
+                                   ),
+                            exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(200))
                         ) {
-                            listOf("Ospedali", "Università", "Musei", "Shopping").forEach { label ->
-                                AssistChip(
-                                    onClick = { onSearchOpen() },
-                                    label = { Text(label, fontWeight = FontWeight.Medium) }
-                                )
+                            RouteDetailInfoCard(
+                                route = selectedRoute!!,
+                                destination = routeDetailData?.get("destination") as? String ?: "",
+                                stopName = routeDetailData?.get("stopName") as? String ?: "",
+                                distance = routeDetailData?.get("distance") as? Int,
+                                arrivalTimes = routeDetailData?.get("arrivalTimes") as? List<com.av.urbanway.data.models.WaitingTime> ?: emptyList(),
+                                onClose = {
+                                    viewModel.clearRouteDetail()
+                                }
+                            )
+                        }
+                        
+                        // Show loading indicator while fetching trip details
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = routeTripDetails == null,
+                            enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(200)),
+                            exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(300))
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxWidth(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Card(
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                                    modifier = Modifier.padding(16.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier.padding(16.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                                    ) {
+                                        androidx.compose.material3.CircularProgressIndicator(
+                                            modifier = Modifier.size(20.dp),
+                                            strokeWidth = 2.dp
+                                        )
+                                        Text(
+                                            text = "Caricamento percorso...",
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
                             }
+                        }
+                    } else {
+                        // Default expanded content
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(bottom = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            Spacer(Modifier.height(42.dp))
+
                         }
                     }
                 }

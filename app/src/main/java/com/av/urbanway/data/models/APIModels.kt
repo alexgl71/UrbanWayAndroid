@@ -81,8 +81,9 @@ data class JourneyResponse(
 )
 
 data class TripDetailsResponse(
-    val stops: List<TripStop>,
-    val shapes: List<TripShape>
+    // Some backends may omit fields; keep nullable to avoid runtime NPEs
+    val stops: List<TripStop>?,
+    val shapes: List<TripShape>?
 )
 
 data class TripStop(

@@ -8,6 +8,7 @@ import com.av.urbanway.data.local.LocationManager
 import com.av.urbanway.data.local.PlacesService
 import android.content.Context
 import com.av.urbanway.data.models.*
+import com.av.urbanway.data.models.UIState
 import com.av.urbanway.domain.repository.TransitRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -157,6 +158,13 @@ class MainViewModel(
     
     private val _routeDetailData = MutableStateFlow<Map<String, Any>?>(null)
     val routeDetailData: StateFlow<Map<String, Any>?> = _routeDetailData.asStateFlow()
+    
+    private val _routeTripDetails = MutableStateFlow<com.av.urbanway.data.models.TripDetailsResponse?>(null)
+    val routeTripDetails: StateFlow<com.av.urbanway.data.models.TripDetailsResponse?> = _routeTripDetails.asStateFlow()
+    
+    // Flag to prevent map redrawing during sheet animations
+    private val _isSheetAnimating = MutableStateFlow(false)
+    val isSheetAnimating: StateFlow<Boolean> = _isSheetAnimating.asStateFlow()
 
     // Loading states
     private val _isLoadingNearbyStops = MutableStateFlow(false)
@@ -217,19 +225,11 @@ class MainViewModel(
     private val _showingJourneyPlanner = MutableStateFlow(false)
     val showingJourneyPlanner: StateFlow<Boolean> = _showingJourneyPlanner.asStateFlow()
 
-    // UIState enum - matching iOS
-    enum class UIState {
-        NORMAL,                    // Homepage with location cards
-        SEARCHING,                 // General address/place search with categories
-        JOURNEY_PLANNING,          // Journey composer is visible
-        EDITING_JOURNEY_FROM,      // Editing FROM field - search for starting point
-        EDITING_JOURNEY_TO         // Editing TO field - search for destination
-    }
     
     // Legacy support - computed properties for backward compatibility
     val isSearchActive: Boolean
         get() = when (_uiState.value) {
-            UIState.NORMAL -> false
+            UIState.NORMAL, UIState.ROUTE_DETAIL -> false
             UIState.SEARCHING, UIState.JOURNEY_PLANNING, UIState.EDITING_JOURNEY_FROM, UIState.EDITING_JOURNEY_TO -> true
         }
     
@@ -341,7 +341,43 @@ class MainViewModel(
 
     fun expandBottomSheet() { _isBottomSheetExpanded.value = true }
     fun collapseBottomSheet() { _isBottomSheetExpanded.value = false }
-    fun toggleBottomSheetExpanded() { _isBottomSheetExpanded.value = !_isBottomSheetExpanded.value }
+    fun toggleBottomSheetExpanded() { 
+        val wasExpanded = _isBottomSheetExpanded.value
+        _isBottomSheetExpanded.value = !wasExpanded
+        
+        // Set animation flag to prevent map redrawing during transition
+        _isSheetAnimating.value = true
+        
+        // When collapsing sheet in ROUTE_DETAIL state, return to NORMAL
+        if (wasExpanded && _uiState.value == UIState.ROUTE_DETAIL) {
+            // State changes to NORMAL immediately, map clears immediately
+            _uiState.value = UIState.NORMAL
+            clearRouteDetail()
+            // Nearby stops will be drawn when sheet is fully collapsed (see onSheetFullyCollapsed)
+        }
+    }
+    
+    fun onSheetFullyOpened() {
+        // Called when draggable sheet animation completes (fully opened)
+        _isSheetAnimating.value = false // Animation complete, safe to draw
+        
+        if (_uiState.value == UIState.ROUTE_DETAIL && _selectedRoute.value != null) {
+            // Now fetch trip details and draw polyline + route stops
+            val routeId = _selectedRoute.value!!
+            val params = _routeDetailData.value ?: emptyMap()
+            fetchRouteTrip(routeId, params)
+        }
+    }
+    
+    fun onSheetFullyCollapsed() {
+        // Called when draggable sheet animation completes (fully collapsed)
+        _isSheetAnimating.value = false // Animation complete, safe to draw
+        
+        if (_uiState.value == UIState.NORMAL) {
+            // Now safe to draw nearby stops (sheet animation finished)
+            // The map will automatically show nearby stops since state is NORMAL
+        }
+    }
     fun toggleBottomSheet() { _showBottomSheet.value = !_showBottomSheet.value }
     
     // Favorites
@@ -367,7 +403,8 @@ class MainViewModel(
                             destination = headsign.tripHeadsign,
                             type = TransportType.BUS,
                             isRealTime = departureTime.hasRealtimeUpdate,
-                            stopId = headsign.stopId
+                            stopId = headsign.stopId,
+                            tripId = departureTime.tripId
                         )
                         waitingTimes.add(waitingTime)
                     }
@@ -739,9 +776,55 @@ class MainViewModel(
     }
 
     fun handleRouteSelect(routeId: String, params: Map<String, Any> = emptyMap()) {
+        // Step 1: Set animation flag to prevent drawing during transition
+        _isSheetAnimating.value = true
+        
+        // Step 2: Change state to ROUTE_DETAIL (this clears map immediately)
+        _uiState.value = UIState.ROUTE_DETAIL
         _selectedRoute.value = routeId
         _routeDetailData.value = params
         _targetHighlightStopId.value = params["stopId"] as? String
+        
+        // Step 3: Expand bottom sheet 
+        _isBottomSheetExpanded.value = true
+        
+        // Step 4: API call will happen when sheet is fully opened (see onSheetFullyOpened)
+    }
+    
+    private fun fetchRouteTrip(routeId: String, params: Map<String, Any>) {
+        val tripId = params["tripId"] as? String
+        
+        if (tripId == null) {
+            android.util.Log.e("MainViewModel", "No tripId provided for route $routeId")
+            _routeTripDetails.value = null
+            return
+        }
+        
+        viewModelScope.launch {
+            try {
+                transitRepository.getTripDetails(tripId).collect { result ->
+                    when (result) {
+                        is com.av.urbanway.data.api.APIResult.Success -> {
+                            _routeTripDetails.value = result.data
+                        }
+                        is com.av.urbanway.data.api.APIResult.Error -> {
+                            android.util.Log.e("MainViewModel", "Failed to fetch trip details for $tripId: ${result.exception.message}")
+                            _routeTripDetails.value = null
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("MainViewModel", "Failed to fetch trip details for $tripId: ${e.message}")
+                _routeTripDetails.value = null
+            }
+        }
+    }
+    
+    fun clearRouteDetail() {
+        _selectedRoute.value = null
+        _routeDetailData.value = null
+        _targetHighlightStopId.value = null
+        _routeTripDetails.value = null
     }
 
     fun showFixedJourneyOverlay(journey: JourneyOption) {

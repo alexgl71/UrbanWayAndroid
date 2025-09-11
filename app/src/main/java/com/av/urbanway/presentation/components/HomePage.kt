@@ -62,6 +62,25 @@ fun HomePage(
             onUnpin = { routeId, destination, stopId ->
                 viewModel.removePinnedArrival(routeId, destination, stopId)
             },
+            onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
+                // Extract tripId from first arrival time if available
+                val tripId = arrivalTimes.firstOrNull()?.tripId
+                
+                val params = mutableMapOf<String, Any>(
+                    "destination" to destination,
+                    "stopId" to stopId,
+                    "stopName" to stopName,
+                    "distance" to (distance ?: 0),
+                    "arrivalTimes" to arrivalTimes
+                )
+                
+                // Only add tripId if it's actually available
+                if (tripId != null) {
+                    params["tripId"] = tripId
+                }
+                
+                viewModel.handleRouteSelect(routeId, params)
+            },
             modifier = Modifier
         )
     }
@@ -116,6 +135,12 @@ private fun AddressSearchBar(
                 ),
                 color = Color.Black,
                 modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Filled.Search,
+                contentDescription = "Search",
+                tint = Color(0xFF0B3D91),
+                modifier = Modifier.size(20.dp)
             )
         }
     }

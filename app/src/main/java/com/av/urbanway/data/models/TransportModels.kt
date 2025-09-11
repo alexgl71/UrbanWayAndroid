@@ -13,6 +13,8 @@ data class WaitingTime(
     val isRealTime: Boolean,
     @SerializedName("stopId")
     val stopId: String,
+    @SerializedName("tripId")
+    val tripId: String? = null,
     val id: String = "${route}_${destination}_${stopId}"
 )
 

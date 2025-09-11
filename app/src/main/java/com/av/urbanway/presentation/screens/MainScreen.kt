@@ -47,6 +47,7 @@ import com.av.urbanway.presentation.components.ContextualFABButtons
 import com.av.urbanway.presentation.components.DefaultFABButtons
 import com.av.urbanway.presentation.components.UnifiedFloatingToolbar
 import com.av.urbanway.presentation.components.ToolbarButton
+import com.av.urbanway.presentation.components.SearchScreen
 import com.av.urbanway.presentation.navigation.Screen
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 
@@ -103,29 +104,38 @@ fun MainScreen() {
             .background(Color(0xFFD9731F)) // UrbanWay brand color
             .statusBarsPadding() // avoid drawing under the status bar
     ) {
-        // Main Navigation Content
-        NavHost(
-            navController = navController,
-            startDestination = Screen.Home.route,
-            modifier = Modifier.fillMaxSize()
-        ) {
-            composable(Screen.Home.route) {
-                HomePage(
+        // Conditional content based on UI state
+        when (uiState) {
+            UIState.SEARCHING -> {
+                SearchScreen(
                     viewModel = viewModel,
-                    onNavigateToRealtime = {
-                        navController.navigate(Screen.RealtimeArrivals.route)
-                    },
-                    onNavigateToRouteDetail = {
-                        navController.navigate(Screen.RouteDetail.route)
-                    },
-                    onNavigateToJourneyPlanner = {
-                        navController.navigate(Screen.JourneyPlanner.route)
-                    },
-                    onNavigateToJourneyResults = {
-                        navController.navigate(Screen.JourneyResults.route)
-                    }
+                    modifier = Modifier.fillMaxSize()
                 )
             }
+            else -> {
+                // Main Navigation Content
+                NavHost(
+                    navController = navController,
+                    startDestination = Screen.Home.route,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    composable(Screen.Home.route) {
+                        HomePage(
+                            viewModel = viewModel,
+                            onNavigateToRealtime = {
+                                navController.navigate(Screen.RealtimeArrivals.route)
+                            },
+                            onNavigateToRouteDetail = {
+                                navController.navigate(Screen.RouteDetail.route)
+                            },
+                            onNavigateToJourneyPlanner = {
+                                navController.navigate(Screen.JourneyPlanner.route)
+                            },
+                            onNavigateToJourneyResults = {
+                                navController.navigate(Screen.JourneyResults.route)
+                            }
+                        )
+                    }
             
             composable(Screen.RealtimeArrivals.route) {
                 RealtimeArrivalsScreen(
@@ -179,10 +189,12 @@ fun MainScreen() {
                     onBack = { navController.popBackStack() }
                 )
             }
+                }
+            }
         }
 
-        // Draggable Bottom Sheet (conditionally visible)
-        if (showBottomSheet) {
+        // Draggable Bottom Sheet (conditionally visible - not in SEARCHING state)
+        if (showBottomSheet && uiState != UIState.SEARCHING) {
             DraggableBottomSheet(
                 viewModel = viewModel,
                 onSearchOpen = {
@@ -193,8 +205,8 @@ fun MainScreen() {
         }
 
 
-        // iOS-style FAB with animations (chevron ↔ X)
-        if (showBottomSheet) {
+        // iOS-style FAB with animations (chevron ↔ X) - not in SEARCHING state
+        if (showBottomSheet && uiState != UIState.SEARCHING) {
             val fabSize = 56.dp
             val haptics = LocalHapticFeedback.current
             
@@ -270,7 +282,7 @@ fun MainScreen() {
                             contentDescription = if (isBottomSheetExpanded) "Close" else "Expand",
                             tint = Color(0xFF333333),
                             modifier = Modifier
-                                .size(24.dp)
+                                .size(36.dp)
                                 .graphicsLayer { rotationZ = iconRotation }
                         )
                     }
@@ -278,8 +290,8 @@ fun MainScreen() {
             }
         }
         
-        // Default toolbar (settings + search) - shown when bottom sheet is collapsed
-        if (showBottomSheet && !isBottomSheetExpanded) {
+        // Default toolbar (settings + search) - shown when bottom sheet is collapsed and not in SEARCHING state
+        if (showBottomSheet && !isBottomSheetExpanded && uiState != UIState.SEARCHING) {
             UnifiedFloatingToolbar(
                 buttons = listOf(
                     ToolbarButton(
@@ -301,8 +313,8 @@ fun MainScreen() {
             )
         }
         
-        // Contextual toolbar (5 buttons) - shown when bottom sheet is expanded
-        if (showBottomSheet && isBottomSheetExpanded) {
+        // Contextual toolbar (5 buttons) - shown when bottom sheet is expanded and not in SEARCHING state
+        if (showBottomSheet && isBottomSheetExpanded && uiState != UIState.SEARCHING) {
             UnifiedFloatingToolbar(
                 buttons = listOf(
                     ToolbarButton(

@@ -6,7 +6,8 @@ enum class UIState {
     SEARCHING,
     JOURNEY_PLANNING,
     EDITING_JOURNEY_FROM,
-    EDITING_JOURNEY_TO
+    EDITING_JOURNEY_TO,
+    ROUTE_DETAIL
 }
 
 // Navigation Models
