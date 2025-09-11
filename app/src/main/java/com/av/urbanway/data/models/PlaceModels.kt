@@ -1,6 +1,7 @@
 package com.av.urbanway.data.models
 
 data class PlaceResult(
+    val id: String = "",
     val placeId: String?,
     val title: String,
     val subtitle: String?,

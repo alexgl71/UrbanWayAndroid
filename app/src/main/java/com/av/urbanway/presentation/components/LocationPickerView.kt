@@ -59,15 +59,15 @@ fun LocationPickerView(
                 PlaceResult(
                     id = "1",
                     placeId = "place1",
-                    name = "Via Roma",
-                    address = "Via Roma, 10, Torino",
+                    title = "Via Roma",
+                    subtitle = "Via Roma, 10, Torino",
                     coordinates = Coordinates(45.0703, 7.6869)
                 ),
                 PlaceResult(
                     id = "2", 
                     placeId = "place2",
-                    name = "Piazza Castello",
-                    address = "Piazza Castello, Torino",
+                    title = "Piazza Castello",
+                    subtitle = "Piazza Castello, Torino",
                     coordinates = Coordinates(45.0703, 7.6869)
                 )
             )
@@ -288,11 +288,11 @@ fun LocationPickerView(
                             items(searchResults) { result ->
                                 LocationResultCard(
                                     icon = Icons.Filled.LocationOn,
-                                    title = result.name,
-                                    subtitle = result.address,
+                                    title = result.title,
+                                    subtitle = result.subtitle ?: "",
                                     onClick = {
                                         val location = Location(
-                                            address = result.address,
+                                            address = result.subtitle ?: result.title,
                                             coordinates = result.coordinates ?: Coordinates(0.0, 0.0),
                                             isManual = true
                                         )

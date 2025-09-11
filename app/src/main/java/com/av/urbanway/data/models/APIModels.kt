@@ -35,6 +35,7 @@ data class TripDetailsRequest(
     val tripId: String
 )
 
+
 // API Response Models
 
 data class RoutesSummaryResponse(
