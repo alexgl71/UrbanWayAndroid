@@ -79,8 +79,7 @@ fun SearchResultsCardView(
                 SearchResultsList(
                     results = searchResults,
                     onResultClick = { result ->
-                        // TODO: Add selectSearchResult method to MainViewModel
-                        // viewModel.selectSearchResult(result)
+                        viewModel.selectSearchResult(result)
                     },
                     modifier = Modifier.fillMaxWidth()
                 )

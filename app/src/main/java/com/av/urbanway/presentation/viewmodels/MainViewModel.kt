@@ -80,15 +80,9 @@ class MainViewModel(
     private val _isTransitioning = MutableStateFlow(false)
     val isTransitioning: StateFlow<Boolean> = _isTransitioning.asStateFlow()
     
-    // Current location and data
-    private val _currentLocation = MutableStateFlow(
-        Location(
-            address = "Piazza Castello, Torino",
-            coordinates = Coordinates(lat = 45.07102258187123, lng = 7.685422860157677),
-            isManual = false
-        )
-    )
-    val currentLocation: StateFlow<Location> = _currentLocation.asStateFlow()
+    // Current location and data - start with null, set to real location or fallback based on permission
+    private val _currentLocation = MutableStateFlow<Location?>(null)
+    val currentLocation: StateFlow<Location?> = _currentLocation.asStateFlow()
 
     // API Data - matching iOS
     private val _nearbyStops = MutableStateFlow<List<StopInfo>>(emptyList())
@@ -517,9 +511,13 @@ class MainViewModel(
     }
     
     private fun setupSearchBindings() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - setupSearchBindings called")
         viewModelScope.launch {
+            android.util.Log.d("TRANSITOAPP", "MainViewModel - starting to collect placesService.searchResults")
             placesService.searchResults.collect { results ->
+                android.util.Log.d("TRANSITOAPP", "MainViewModel - received ${results.size} results from placesService")
                 _searchResults.value = results.map { pr ->
+                    android.util.Log.d("TRANSITOAPP", "MainViewModel - mapping PlaceResult: ${pr.title}")
                     SearchResult(
                         title = pr.title,
                         subtitle = pr.subtitle,
@@ -528,6 +526,7 @@ class MainViewModel(
                         placeId = pr.placeId
                     )
                 }
+                android.util.Log.d("TRANSITOAPP", "MainViewModel - updated _searchResults with ${_searchResults.value.size} SearchResults")
             }
         }
         
@@ -549,6 +548,15 @@ class MainViewModel(
         }
     }
     
+    fun setLocationPermissionDeniedFallback() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - Location permission denied, using Piazza Castello fallback")
+        _currentLocation.value = Location(
+            address = "Piazza Castello, Torino",
+            coordinates = Coordinates(lat = 45.07102258187123, lng = 7.685422860157677),
+            isManual = false
+        )
+    }
+    
     fun returnToGPSMode() {
         // Reset to GPS mode and clear manual location
         viewModelScope.launch {
@@ -559,7 +567,7 @@ class MainViewModel(
             // Reset to default with isManual = false and request location
             _currentLocation.value = Location(
                 address = "Ricerca posizione...",
-                coordinates = _currentLocation.value.coordinates, // Keep current coordinates temporarily
+                coordinates = _currentLocation.value?.coordinates ?: Coordinates(lat = 45.07102258187123, lng = 7.685422860157677), // Use current coordinates or fallback
                 isManual = false
             )
             }
@@ -739,9 +747,23 @@ class MainViewModel(
         _searchResults.value = emptyList()
     }
     
+    fun clearSelectedPlace() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - clearing selected place")
+        _selectedPlace.value = null
+    }
+
+    // Missing methods for search components integration
+    fun setCategoryForHome(categoryType: String) {
+        // TODO: Handle category selection for popular destinations
+        // Could trigger a search or filter nearby stops by category
+    }
+    
     fun updateSearchQuery(query: String) {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - updateSearchQuery called with: '$query'")
         _searchQuery.value = query
-        placesService.startAutocomplete(query)
+        val userLocation = _currentLocation.value?.coordinates
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - calling placesService.startAutocomplete with location: $userLocation")
+        placesService.startAutocomplete(query, userLocation)
     }
 
     fun startJourneySearch(
@@ -833,11 +855,61 @@ class MainViewModel(
     }
 
     fun selectSearchResult(result: SearchResult) {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - selectSearchResult called with: ${result.title}")
         when (result.type) {
             SearchResultType.ADDRESS, SearchResultType.PLACE -> {
-                result.coordinates?.let { coordinates ->
-                    _endLocation.value = Location(result.title, coordinates)
-                    _uiState.value = UIState.JOURNEY_PLANNING
+                if (result.coordinates != null) {
+                    // Direct coordinates available
+                    android.util.Log.d("TRANSITOAPP", "MainViewModel - using direct coordinates")
+                    
+                    // Set selected place data for map pin
+                    _selectedPlace.value = SelectedPlaceData(
+                        name = result.title,
+                        description = result.subtitle ?: "",
+                        coordinates = result.coordinates
+                    )
+                    
+                    // Close search first
+                    closeSearch()
+                    android.util.Log.d("TRANSITOAPP", "MainViewModel - showing bottom sheet for selected place")
+                    // Ensure sheet is visible and expanded for selected place
+                    _showBottomSheet.value = true
+                    _isBottomSheetExpanded.value = true
+                    
+                    // Show confirmation
+                    _toastMessage.value = "Destinazione selezionata: ${result.title}"
+                } else if (result.placeId != null) {
+                    // Need to fetch place details
+                    android.util.Log.d("TRANSITOAPP", "MainViewModel - fetching place details for placeId: ${result.placeId}")
+                    viewModelScope.launch {
+                        val placeDetailsResult = placesService.getPlaceDetails(result.placeId)
+                        placeDetailsResult.fold(
+                            onSuccess = { placeDetails ->
+                                android.util.Log.d("TRANSITOAPP", "MainViewModel - place details fetched successfully: ${placeDetails.name}")
+                                
+                                // Set selected place data for map pin
+                                _selectedPlace.value = SelectedPlaceData(
+                                    name = placeDetails.name,
+                                    description = placeDetails.address ?: "",
+                                    coordinates = placeDetails.coordinates
+                                )
+                                
+                                // Close search first
+                                closeSearch()
+                                android.util.Log.d("TRANSITOAPP", "MainViewModel - showing bottom sheet for selected place")
+                                // Ensure sheet is visible and expanded for selected place
+                                _showBottomSheet.value = true
+                                _isBottomSheetExpanded.value = true
+                                
+                                // Show confirmation
+                                _toastMessage.value = "Destinazione selezionata: ${placeDetails.name}"
+                            },
+                            onFailure = { error ->
+                                android.util.Log.e("TRANSITOAPP", "MainViewModel - failed to fetch place details: ${error.message}")
+                                // Could show an error message to user here
+                            }
+                        )
+                    }
                 }
             }
             SearchResultType.ROUTE -> {

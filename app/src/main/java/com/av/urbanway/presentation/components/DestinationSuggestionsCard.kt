@@ -141,8 +141,7 @@ fun DestinationSuggestionsCard(
                             // TODO: Call PlacesService.stopAutocomplete()
                             
                             // Set category for home
-                            // TODO: Add setCategoryForHome method to MainViewModel
-                            // viewModel.setCategoryForHome(category.type)
+                            viewModel.setCategoryForHome(category.type)
                         }
                     )
                 }

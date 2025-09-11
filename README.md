@@ -4,16 +4,18 @@
 [![API](https://img.shields.io/badge/API-34%2B-brightgreen.svg?style=flat)](https://android-arsenal.com/api?level=34)
 [![Kotlin](https://img.shields.io/badge/kotlin-2.0.21-blue.svg)](https://kotlinlang.org)
 
-**UrbanWay** is a modern Android transit app for Turin, Italy, providing real-time public transportation information, journey planning, and interactive maps.
+**UrbanWay** is a modern Android transit app for Turin, Italy, providing real-time public transportation information, journey planning, and interactive maps. Built with **complete iOS feature parity** through systematic component porting.
 
 ## ✨ Features
 
 - 🚌 **Real-time Arrivals**: Live bus, tram, and metro departure times
 - 🗺️ **Interactive Maps**: Google Maps integration with route visualization  
-- 📍 **Journey Planning**: Multi-modal route optimization
+- 📍 **Journey Planning**: Multi-modal route optimization with iOS-ported components
 - ⭐ **Favorites**: Pin frequently used routes and stops
 - 🔍 **Smart Search**: Places autocomplete with transit station support
 - 📱 **Modern UI**: Material 3 design with Jetpack Compose
+- 🍎 **iOS Parity**: Complete feature parity with iOS version through systematic component porting
+- 🎯 **Intuitive UX**: iOS-style toolbar and navigation patterns
 
 ## 🏗️ Architecture
 
@@ -166,15 +168,25 @@ The app uses **UrbanWay brand colors**:
 - [x] Basic UI structure with Compose
 - [x] Navigation framework
 
-### 🔄 In Progress (Phase 2)  
-- [ ] Google Maps integration and display
-- [ ] Places search implementation
-- [ ] Real-time arrivals UI
-- [ ] Journey planning screens
-- [ ] Route visualization
+### ✅ Completed (Phase 2) - iOS Parity Update
+- [x] **iOS Component Porting**: Complete 1:1 porting of iOS UI components
+  - [x] DestinationsCard.kt - Popular destinations with categories
+  - [x] FullscreenMapCardView.kt - Fullscreen map with red dot overlay
+  - [x] InlineJourneyResultsCard.kt - Journey results with filtering
+  - [x] JourneyCardView.kt - Detailed expandable journey cards
+  - [x] JourneyResultsView.kt - Journey grouping and optimization
+- [x] **iOS-Style Toolbar**: 3-button design matching iOS (Map, Favorites, Journey)
+- [x] **Navigation Integration**: Proper flow from place selection to journey planning
+- [x] **Google Maps Integration**: Interactive maps with place selection
+- [x] **Places Search**: Google Places API with autocomplete
+- [x] **Real-time Arrivals**: Live departure information display
 
-### 📋 Planned (Phase 3)
-- [ ] Advanced map features (route overlays)
+### 🔄 In Progress (Phase 3)
+- [ ] Advanced map features (route overlays, turn-by-turn)
+- [ ] Enhanced journey details with real-time updates
+- [ ] Favorites management and persistence
+
+### 📋 Planned (Phase 4)
 - [ ] Push notifications for favorites
 - [ ] Offline mode and caching
 - [ ] Accessibility improvements  

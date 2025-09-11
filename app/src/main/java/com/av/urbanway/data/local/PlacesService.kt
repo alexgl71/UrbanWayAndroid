@@ -47,20 +47,29 @@ class PlacesService private constructor(
     private val _isSearching = MutableStateFlow(false)
     val isSearching: StateFlow<Boolean> = _isSearching.asStateFlow()
 
-    fun startAutocomplete(query: String) {
+    fun startAutocomplete(query: String, userLocation: Coordinates? = null) {
+        android.util.Log.d("TRANSITOAPP", "PlacesService - startAutocomplete called with query: '$query'")
         // Basic debounce/trim could be added here if needed
         val trimmed = query.trim()
         if (trimmed.isEmpty()) {
+            android.util.Log.d("TRANSITOAPP", "PlacesService - query empty, clearing results")
             _searchResults.value = emptyList()
             return
         }
+        android.util.Log.d("TRANSITOAPP", "PlacesService - setting isSearching = true, starting search for: '$trimmed'")
         _isSearching.value = true
         // Fire and forget; the underlying API is callback-based
         // Use existing searchPlaces() to fetch suggestions in the Turin bounding box
         kotlinx.coroutines.GlobalScope.launch(kotlinx.coroutines.Dispatchers.IO) {
-            val results = searchPlaces(trimmed, null)
-            val list = results.getOrElse { emptyList() }
+            android.util.Log.d("TRANSITOAPP", "PlacesService - calling searchPlaces for: '$trimmed'")
+            val results = searchPlaces(trimmed, userLocation)
+            val list = results.getOrElse { error ->
+                android.util.Log.e("TRANSITOAPP", "PlacesService - searchPlaces failed: ${error.message}")
+                emptyList()
+            }
+            android.util.Log.d("TRANSITOAPP", "PlacesService - searchPlaces returned ${list.size} results")
             _searchResults.value = list.map {
+                android.util.Log.d("TRANSITOAPP", "PlacesService - mapping result: ${it.title}")
                 PlaceResult(
                     placeId = it.placeId,
                     title = it.title,
@@ -68,6 +77,7 @@ class PlacesService private constructor(
                     coordinates = it.coordinates
                 )
             }
+            android.util.Log.d("TRANSITOAPP", "PlacesService - setting isSearching = false")
             _isSearching.value = false
         }
     }
@@ -91,19 +101,15 @@ class PlacesService private constructor(
             val placesClient = googleMapsConfig.placesClient
             
             // Create autocomplete request
+            android.util.Log.d("TRANSITOAPP", "PlacesService - creating autocomplete request for query: '$query'")
+            android.util.Log.d("TRANSITOAPP", "PlacesService - Turin bounds: N=${turinBounds.northeast.latitude}, S=${turinBounds.southwest.latitude}, E=${turinBounds.northeast.longitude}, W=${turinBounds.southwest.longitude}")
             val request = FindAutocompletePredictionsRequest.builder()
                 .setQuery(query)
                 .setLocationBias(RectangularBounds.newInstance(turinBounds))
                 .setCountries("IT") // Restrict to Italy
-                .setTypesFilter(
-                    listOf(
-                        PlaceTypes.ADDRESS,
-                        PlaceTypes.ESTABLISHMENT,
-                        PlaceTypes.POINT_OF_INTEREST,
-                        PlaceTypes.TRANSIT_STATION
-                    )
-                )
+                // Removed type filter to avoid mixing ADDRESS with other types
                 .build()
+            android.util.Log.d("TRANSITOAPP", "PlacesService - autocomplete request created successfully")
             
             placesClient.findAutocompletePredictions(request)
                 .addOnSuccessListener { response: FindAutocompletePredictionsResponse ->

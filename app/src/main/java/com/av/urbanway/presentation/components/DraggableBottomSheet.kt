@@ -68,6 +68,7 @@ fun DraggableBottomSheet(
     val routeTripDetails by viewModel.routeTripDetails.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val isSheetAnimating by viewModel.isSheetAnimating.collectAsState()
+    val selectedPlace by viewModel.selectedPlace.collectAsState()
 
     if (!showBottomSheet) return
 
@@ -106,7 +107,7 @@ fun DraggableBottomSheet(
                 Box(modifier = Modifier.fillMaxSize()) {
                     val stopsForMap = if (allStops.isNotEmpty()) allStops else nearbyStops
                     UrbanWayMapView(
-                        currentLocation = currentLocation.coordinates,
+                        currentLocation = currentLocation?.coordinates,
                         mapConfig = GoogleMapsConfig.getInstance(context),
                         modifier = Modifier.fillMaxSize(),
                         stops = stopsForMap,
@@ -114,7 +115,8 @@ fun DraggableBottomSheet(
                         routeTripDetails = routeTripDetails,
                         selectedStopId = routeDetailData?.get("stopId") as? String,
                         uiState = uiState,
-                        isSheetAnimating = isSheetAnimating
+                        isSheetAnimating = isSheetAnimating,
+                        selectedPlace = selectedPlace
                     )
                     // Center fixed red circle overlay (independent of the map)
                     Box(

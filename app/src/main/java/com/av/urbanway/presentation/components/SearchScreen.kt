@@ -20,6 +20,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.av.urbanway.presentation.viewmodels.MainViewModel
+import android.util.Log
 
 enum class SearchCategory {
     INDIRIZZO,
@@ -33,8 +34,25 @@ fun SearchScreen(
     viewModel: MainViewModel,
     modifier: Modifier = Modifier
 ) {
-    var searchText by remember { mutableStateOf("") }
+    // Use ViewModel's search state instead of local state
+    val searchQuery by viewModel.searchQuery.collectAsState()
+    val searchResults by viewModel.searchResults.collectAsState()
+    val isSearching by viewModel.isSearchLoading.collectAsState()
     var selectedCategory by remember { mutableStateOf(SearchCategory.INDIRIZZO) }
+    
+    // Debug logging
+    LaunchedEffect(searchQuery) {
+        Log.d("TRANSITOAPP", "SearchScreen - searchQuery changed: '$searchQuery'")
+    }
+    LaunchedEffect(searchResults) {
+        Log.d("TRANSITOAPP", "SearchScreen - searchResults changed: ${searchResults.size} results")
+        searchResults.forEach { result ->
+            Log.d("TRANSITOAPP", "SearchScreen - result: ${result.title} - ${result.subtitle}")
+        }
+    }
+    LaunchedEffect(isSearching) {
+        Log.d("TRANSITOAPP", "SearchScreen - isSearching changed: $isSearching")
+    }
 
     Column(
         modifier = modifier
@@ -44,9 +62,15 @@ fun SearchScreen(
     ) {
         // Search bar (without cancel button)
         SearchBar(
-            searchText = searchText,
-            onSearchTextChange = { searchText = it },
-            onClear = { searchText = "" },
+            searchText = searchQuery,
+            onSearchTextChange = { query -> 
+                Log.d("TRANSITOAPP", "SearchBar - text changed to: '$query'")
+                viewModel.updateSearchQuery(query)
+            },
+            onClear = { 
+                Log.d("TRANSITOAPP", "SearchBar - clear button pressed")
+                viewModel.updateSearchQuery("")
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
@@ -77,20 +101,23 @@ fun SearchScreen(
             modifier = Modifier.fillMaxWidth()
         )
 
-        // Search results placeholder
-        Spacer(modifier = Modifier.height(20.dp))
-        
-        // TODO: Add search results based on selected category and search text
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = "Cerca ${selectedCategory.name.lowercase()} con: \"$searchText\"",
-                color = Color.White,
-                style = MaterialTheme.typography.bodyLarge
-            )
-        }
+        // Destination Suggestions (Popular Categories)
+        DestinationSuggestionsCard(
+            destinationsData = null, // TODO: Pass actual data
+            viewModel = viewModel,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp)
+        )
+
+        // Search Results
+        SearchResultsCardView(
+            searchResults = searchResults,
+            isSearching = isSearching,
+            searchText = searchQuery,
+            viewModel = viewModel,
+            modifier = Modifier.fillMaxWidth()
+        )
     }
 }
 

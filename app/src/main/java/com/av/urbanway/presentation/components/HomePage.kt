@@ -45,7 +45,7 @@ fun HomePage(
     ) {
         // Search bar with address display
         AddressSearchBar(
-            address = currentLocation.address,
+            address = currentLocation?.address ?: "Ricerca posizione...",
             onClick = { viewModel.openSearch() },
             modifier = Modifier
                 .fillMaxWidth()

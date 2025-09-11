@@ -167,15 +167,13 @@ private fun MapRouteView(
         
         Box(modifier = modifier.fillMaxSize()) {
             UrbanWayMapView(
-                currentLocation = com.av.urbanway.data.models.Coordinates(
-                    lat = 45.07102258187123,
-                    lng = 7.685422860157677
-                ),
+                currentLocation = null, // Route detail view doesn't need user location for centering
                 mapConfig = com.av.urbanway.data.local.GoogleMapsConfig.getInstance(context),
                 modifier = Modifier.fillMaxSize(),
                 stops = mapStops,
                 routeTripDetails = tripDetails,
-                selectedStopId = selectedStopId
+                selectedStopId = selectedStopId,
+                selectedPlace = null // Route detail doesn't show selected places
             )
         }
     } else {

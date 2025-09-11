@@ -195,22 +195,24 @@ fun LocationPickerView(
                 modifier = Modifier.fillMaxSize()
             ) {
                 // Current Location Button (if available)
-                if (currentLocation.coordinates.lat != 0.0) {
-                    LocationResultCard(
-                        icon = Icons.Filled.MyLocation,
-                        title = "Posizione attuale",
-                        subtitle = currentLocation.address,
-                        onClick = {
-                            onLocationSelected(currentLocation)
-                        },
+                currentLocation?.let { location ->
+                    if (location.coordinates.lat != 0.0) {
+                        LocationResultCard(
+                            icon = Icons.Filled.MyLocation,
+                            title = "Posizione attuale",
+                            subtitle = location.address,
+                            onClick = {
+                                onLocationSelected(location)
+                            },
                         modifier = Modifier.fillMaxWidth()
                     )
                     
-                    HorizontalDivider(
-                        thickness = 1.dp,
-                        color = Color.Gray.copy(alpha = 0.2f),
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
+                        HorizontalDivider(
+                            thickness = 1.dp,
+                            color = Color.Gray.copy(alpha = 0.2f),
+                            modifier = Modifier.padding(horizontal = 16.dp)
+                        )
+                    }
                 }
 
                 // Search Results

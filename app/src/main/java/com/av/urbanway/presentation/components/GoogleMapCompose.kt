@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.geometry.Offset
 import kotlin.math.*
 
 @Composable
@@ -45,6 +46,7 @@ fun UrbanWayMapView(
     selectedStopId: String? = null,
     uiState: com.av.urbanway.data.models.UIState = com.av.urbanway.data.models.UIState.NORMAL,
     isSheetAnimating: Boolean = false,
+    selectedPlace: com.av.urbanway.presentation.viewmodels.SelectedPlaceData? = null,
     onMapReady: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -106,8 +108,11 @@ fun UrbanWayMapView(
             zoomNow >= 16f -> 800f
             else -> 600f
         }
-        // Filter stops based on UIState - but ONLY when not animating
-        val filteredStops = if (isSheetAnimating) {
+        // When a place is selected, hide all stops (like iOS behavior)
+        val filteredStops = if (selectedPlace != null) {
+            // Selected place mode - show no transit stops, only the selected place pin
+            emptyList()
+        } else if (isSheetAnimating) {
             // During sheet animation - show no stops to prevent redrawing
             emptyList()
         } else {
@@ -182,6 +187,36 @@ fun UrbanWayMapView(
                     if (existing.snippet != newSnippet) existing.snippet = newSnippet
                     // Only update icon if it's actually different (expensive operation)
                     existing.setIcon(icon)
+                }
+            }
+        }
+
+        // Selected place pin (like iOS - classic map pin)
+        selectedPlace?.let { place ->
+            val placeLocation = LatLng(place.coordinates.lat, place.coordinates.lng)
+            
+            // Add a classic red pin marker for the selected place
+            com.google.maps.android.compose.Marker(
+                state = com.google.maps.android.compose.MarkerState(position = placeLocation),
+                title = place.name,
+                snippet = place.description,
+                anchor = Offset(0.5f, 1.0f), // Bottom center anchor for classic pin look
+                icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+            )
+            
+            // Center map on selected place
+            LaunchedEffect(place.coordinates) {
+                kotlinx.coroutines.delay(200) // Small delay to avoid conflicts
+                try {
+                    cameraPositionState.animate(
+                        update = CameraUpdateFactory.newLatLngZoom(
+                            placeLocation,
+                            16f // Good zoom level for viewing a selected place
+                        ),
+                        durationMs = 600
+                    )
+                } catch (e: Exception) {
+                    android.util.Log.w("GoogleMapCompose", "Failed to center on selected place: ${e.message}")
                 }
             }
         }

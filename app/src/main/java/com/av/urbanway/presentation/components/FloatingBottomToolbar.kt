@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.animation.core.*
 import kotlin.math.cos
 import kotlin.math.sin
@@ -283,10 +284,12 @@ private fun DefaultContextualButton(
     }
 }
 
-// Unified parametric toolbar component
+// iOS-matching FloatingToolbar with 3 buttons
 @Composable
-fun UnifiedFloatingToolbar(
-    buttons: List<ToolbarButton>,
+fun IOSFloatingToolbar(
+    onMapTap: () -> Unit,
+    onFavoritesTap: () -> Unit,
+    onJourneyTap: () -> Unit,
     showButtons: Boolean,
     modifier: Modifier = Modifier
 ) {
@@ -312,107 +315,181 @@ fun UnifiedFloatingToolbar(
     )
 
     if (buttonScale > 0f || showButtons) {
-        // Full-width toolbar with center space reserved for FAB
         Surface(
             modifier = modifier
                 .fillMaxWidth()
-                .padding(horizontal = 50.dp)
-                .height(64.dp)
-                .clip(RoundedCornerShape(32.dp))
+                .padding(horizontal = 16.dp)
+                .height(80.dp)
+                .clip(RoundedCornerShape(25.dp))
                 .scale(buttonScale)
                 .graphicsLayer { alpha = buttonAlpha },
-            color = Color.White.copy(alpha = 1f), // Fully opaque for maximum visibility
-            shadowElevation = 20.dp, // Higher elevation for more separation
-            border = androidx.compose.foundation.BorderStroke(
-                width = 2.dp,
-                color = Color(0xFF0B3D91).copy(alpha = 0.15f) // More prominent navy border
-            ),
-            shape = RoundedCornerShape(32.dp)
+            color = Color.White.copy(alpha = 0.9f),
+            shadowElevation = 10.dp,
+            shape = RoundedCornerShape(25.dp)
         ) {
-            when (buttons.size) {
-                2 -> {
-                    // For 2 buttons: spread them around center FAB space
-                    Row(
-                        modifier = Modifier.fillMaxSize(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Left side
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ToolbarButtonItem(
-                                button = buttons[0],
-                                delay = 0,
-                                haptics = haptics
-                            )
-                        }
-                        
-                        // Center space for FAB
-                        Spacer(modifier = Modifier.width(88.dp))
-                        
-                        // Right side
-                        Box(
-                            modifier = Modifier.weight(1f),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            ToolbarButtonItem(
-                                button = buttons[1],
-                                delay = 50,
-                                haptics = haptics
-                            )
-                        }
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IOSToolbarButton(
+                    icon = Icons.Filled.Map,
+                    title = "Mappa",
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onMapTap()
                     }
-                }
-                else -> {
-                    // For 5 buttons: give FAB more importance with extra spacing around it
-                    Row(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        // Left buttons (0, 1)
-                        buttons.take(2).forEachIndexed { index, button ->
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ToolbarButtonItem(
-                                    button = button,
-                                    delay = index * 50,
-                                    haptics = haptics
-                                )
-                            }
-                        }
-                        
-                        // Extra space before center button (FAB area)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        
-                        // Center button (2) - highlighted
-                        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            ToolbarButtonItem(
-                                button = buttons[2],
-                                delay = 2 * 50,
-                                haptics = haptics
-                            )
-                        }
-                        
-                        // Extra space after center button (FAB area)
-                        Spacer(modifier = Modifier.width(6.dp))
-                        
-                        // Right buttons (3, 4)
-                        buttons.drop(3).forEachIndexed { index, button ->
-                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                                ToolbarButtonItem(
-                                    button = button,
-                                    delay = (3 + index) * 50,
-                                    haptics = haptics
-                                )
-                            }
-                        }
+                )
+                
+                IOSToolbarButton(
+                    icon = Icons.Filled.Star,
+                    title = "Preferiti",
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onFavoritesTap()
                     }
-                }
+                )
+                
+                IOSToolbarButton(
+                    icon = Icons.Filled.SwapHoriz,
+                    title = "Percorso",
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onJourneyTap()
+                    }
+                )
             }
         }
+    }
+}
+
+@Composable
+private fun IOSToolbarButton(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurface
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                modifier = Modifier.size(20.dp),
+                tint = MaterialTheme.colorScheme.onSurface
+            )
+            
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+    }
+}
+
+// iOS-style toolbar with back button
+@Composable
+fun IOSFloatingToolbarWithBack(
+    onBackTap: () -> Unit,
+    showButtons: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    
+    // Animate buttons appearance
+    val buttonScale by animateFloatAsState(
+        targetValue = if (showButtons) 1f else 0f,
+        animationSpec = spring(
+            dampingRatio = 0.7f,
+            stiffness = Spring.StiffnessMedium
+        ),
+        label = "toolbarScale"
+    )
+    
+    val buttonAlpha by animateFloatAsState(
+        targetValue = if (showButtons) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (showButtons) 300 else 200,
+            delayMillis = if (showButtons) 100 else 0
+        ),
+        label = "toolbarAlpha"
+    )
+
+    if (buttonScale > 0f || showButtons) {
+        Surface(
+            modifier = modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .height(80.dp)
+                .clip(RoundedCornerShape(25.dp))
+                .scale(buttonScale)
+                .graphicsLayer { alpha = buttonAlpha },
+            color = Color.White.copy(alpha = 0.9f),
+            shadowElevation = 10.dp,
+            shape = RoundedCornerShape(25.dp)
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 20.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IOSToolbarButton(
+                    icon = Icons.Filled.ArrowBack,
+                    title = "Indietro",
+                    onClick = {
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        onBackTap()
+                    }
+                )
+                
+                IOSToolbarButton(
+                    icon = Icons.Filled.Star,
+                    title = "Preferiti",
+                    onClick = { /* Disabled for now */ }
+                )
+                
+                IOSToolbarButton(
+                    icon = Icons.Filled.SwapHoriz,
+                    title = "Percorso",
+                    onClick = { /* Disabled for now */ }
+                )
+            }
+        }
+    }
+}
+
+// Legacy unified toolbar for backward compatibility
+@Composable
+fun UnifiedFloatingToolbar(
+    buttons: List<ToolbarButton>,
+    showButtons: Boolean,
+    modifier: Modifier = Modifier
+) {
+    // For now, map to iOS-style if we have 2 buttons (for backward compatibility)
+    if (buttons.size == 2) {
+        IOSFloatingToolbar(
+            onMapTap = buttons.getOrNull(0)?.onClick ?: {},
+            onFavoritesTap = {},
+            onJourneyTap = buttons.getOrNull(1)?.onClick ?: {},
+            showButtons = showButtons,
+            modifier = modifier
+        )
     }
 }
 

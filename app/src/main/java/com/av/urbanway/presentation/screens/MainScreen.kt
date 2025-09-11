@@ -46,6 +46,7 @@ import com.av.urbanway.presentation.components.ToastView
 import com.av.urbanway.presentation.components.ContextualFABButtons
 import com.av.urbanway.presentation.components.DefaultFABButtons
 import com.av.urbanway.presentation.components.UnifiedFloatingToolbar
+import com.av.urbanway.presentation.components.IOSFloatingToolbar
 import com.av.urbanway.presentation.components.ToolbarButton
 import com.av.urbanway.presentation.components.SearchScreen
 import com.av.urbanway.presentation.navigation.Screen
@@ -65,6 +66,7 @@ fun MainScreen() {
     val toastMessage by viewModel.toastMessage.collectAsState()
     val alertMessage by viewModel.alertMessage.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
+    val selectedPlace by viewModel.selectedPlace.collectAsState()
     
     var hasLocationPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var showLocationPermissionRequest by remember { mutableStateOf(!hasLocationPermission) }
@@ -290,65 +292,33 @@ fun MainScreen() {
             }
         }
         
-        // Default toolbar (settings + search) - shown when bottom sheet is collapsed and not in SEARCHING state
-        if (showBottomSheet && !isBottomSheetExpanded && uiState != UIState.SEARCHING) {
-            UnifiedFloatingToolbar(
-                buttons = listOf(
-                    ToolbarButton(
-                        icon = Icons.Filled.Settings,
-                        contentDescription = "Settings",
-                        onClick = { /* Handle settings */ }
-                    ),
-                    ToolbarButton(
-                        icon = Icons.Filled.Search,
-                        contentDescription = "Search", 
-                        onClick = { viewModel.openSearch() }
-                    )
-                ),
+        // iOS-style toolbar - shown when bottom sheet is visible and not in SEARCHING state
+        if (showBottomSheet && uiState != UIState.SEARCHING) {
+            IOSFloatingToolbar(
+                onMapTap = {
+                    // Navigate to fullscreen map
+                    navController.navigate(Screen.FullscreenMap.route)
+                },
+                onFavoritesTap = {
+                    // Handle favorites (placeholder for now)
+                    viewModel.showToast("Preferiti - Feature in development")
+                },
+                onJourneyTap = {
+                    // Navigate to journey planner with selected place as destination if available
+                    val currentSelectedPlace = selectedPlace
+                    if (currentSelectedPlace != null) {
+                        android.util.Log.d("TRANSITOAPP", "Navigating to journey planner with destination: ${currentSelectedPlace.name}")
+                        navController.navigate(Screen.JourneyPlanner.route)
+                    } else {
+                        // Navigate to journey planner without predefined destination
+                        navController.navigate(Screen.JourneyPlanner.route)
+                    }
+                },
                 showButtons = true,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = (-100).dp)
-                    .zIndex(4f)
-            )
-        }
-        
-        // Contextual toolbar (5 buttons) - shown when bottom sheet is expanded and not in SEARCHING state
-        if (showBottomSheet && isBottomSheetExpanded && uiState != UIState.SEARCHING) {
-            UnifiedFloatingToolbar(
-                buttons = listOf(
-                    ToolbarButton(
-                        icon = Icons.Filled.Notifications,
-                        contentDescription = "Notifications",
-                        onClick = { /* Handle notifications */ }
-                    ),
-                    ToolbarButton(
-                        icon = Icons.Filled.DirectionsWalk,
-                        contentDescription = "Walking Directions",
-                        onClick = { /* Handle walking directions */ }
-                    ),
-                    ToolbarButton(
-                        icon = Icons.Filled.Close,
-                        contentDescription = "Close",
-                        onClick = { /* Handle close */ },
-                        isHighlighted = true // Highlighted center button
-                    ),
-                    ToolbarButton(
-                        icon = Icons.Filled.History,
-                        contentDescription = "History",
-                        onClick = { /* Handle history */ }
-                    ),
-                    ToolbarButton(
-                        icon = Icons.Filled.Menu,
-                        contentDescription = "Menu",
-                        onClick = { /* Handle menu */ }
-                    )
-                ),
-                showButtons = true,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .offset(y = (-100).dp)
-                    .zIndex(4f) // Behind the FAB
+                    .offset(y = (-20).dp)
+                    .zIndex(3f) // Below FAB but above map
             )
         }
 
