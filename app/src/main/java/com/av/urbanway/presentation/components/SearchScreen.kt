@@ -94,30 +94,59 @@ fun SearchScreen(
             }
         }
 
-        // Segmented buttons
-        SegmentedButtons(
-            selectedCategory = selectedCategory,
-            onCategorySelect = { selectedCategory = it },
-            modifier = Modifier.fillMaxWidth()
-        )
+        // Show different content based on search state - matching iOS behavior
+        // Debug logging
+        LaunchedEffect(searchQuery) {
+            android.util.Log.d("SEARCH_DEBUG", "SearchQuery changed: '$searchQuery' (isEmpty: ${searchQuery.isEmpty()})")
+        }
+        
+        if (searchQuery.isEmpty()) {
+            // Empty search state - show segmented buttons and categories
+            android.util.Log.d("SEARCH_DEBUG", "Showing empty state UI")
+            Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Segmented buttons
+                SegmentedButtons(
+                    selectedCategory = selectedCategory,
+                    onCategorySelect = { selectedCategory = it },
+                    modifier = Modifier.fillMaxWidth()
+                )
 
-        // Destination Suggestions (Popular Categories)
-        DestinationSuggestionsCard(
-            destinationsData = null, // TODO: Pass actual data
-            viewModel = viewModel,
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 16.dp)
-        )
-
-        // Search Results
-        SearchResultsCardView(
-            searchResults = searchResults,
-            isSearching = isSearching,
-            searchText = searchQuery,
-            viewModel = viewModel,
-            modifier = Modifier.fillMaxWidth()
-        )
+                // Destination Suggestions (Popular Categories)
+                DestinationSuggestionsCard(
+                    destinationsData = null, // TODO: Pass actual data
+                    viewModel = viewModel,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                )
+            }
+        } else {
+            // User is typing - show only search results (matching iOS)
+            android.util.Log.d("SEARCH_DEBUG", "Showing search results UI for query: '$searchQuery'")
+            
+            Column {
+                // Add a big red text to test if this branch is working
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = Color.Red)
+                ) {
+                    Text(
+                        text = "TYPING MODE - Query: '$searchQuery'",
+                        color = Color.White,
+                        fontSize = 20.sp,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                
+                SearchResultsCardView(
+                    searchResults = searchResults,
+                    isSearching = isSearching,
+                    searchText = searchQuery,
+                    viewModel = viewModel,
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
     }
 }
 

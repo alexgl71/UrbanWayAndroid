@@ -473,6 +473,65 @@ class MainViewModel(
         }
     }
     
+    fun setEndLocationFromPlace(place: SelectedPlaceData) {
+        // Convert selected place to Location and set as destination
+        _endLocation.value = Location(
+            address = place.name, // Use place name as address
+            coordinates = place.coordinates
+        )
+        // Set start location to current location if not already set
+        if (_startLocation.value == null) {
+            setStartToCurrentLocation()
+        }
+        // Clear the selected place since we've used it
+        _selectedPlace.value = null
+    }
+    
+    // MARK: - Manual journey location setters
+    fun setStartLocation(location: Location) {
+        _startLocation.value = location
+        _uiState.value = UIState.JOURNEY_PLANNING
+    }
+    
+    fun setEndLocation(location: Location) {
+        _endLocation.value = location
+        _uiState.value = UIState.JOURNEY_PLANNING
+    }
+    
+    fun startJourneyToSelectedPlace() {
+        val currentSelectedPlace = _selectedPlace.value ?: return
+        
+        // Clear the selected place and start journey planning
+        _selectedPlace.value = null
+        
+        // Set the selected place as the destination for journey planning
+        val destination = Location(
+            address = currentSelectedPlace.name,
+            coordinates = currentSelectedPlace.coordinates,
+            isManual = false
+        )
+        
+        _endLocation.value = destination
+        
+        // Set user's current location as the default starting point
+        val currentLoc = _currentLocation.value
+        if (currentLoc != null) {
+            _startLocation.value = currentLoc
+        } else {
+            _startLocation.value = null
+        }
+        
+        // Hide bottom sheet
+        _showBottomSheet.value = false
+        
+        // Show journey planning state - transition to journey planner
+        _uiState.value = UIState.JOURNEY_PLANNING
+        _requestSearchFocus.value = false // Don't auto-focus search
+        
+        // Show confirmation toast
+        _toastMessage.value = "Destinazione impostata: ${destination.address}"
+    }
+    
     // MARK: - Setup Methods
     
     private var locationUpdatesJob: kotlinx.coroutines.Job? = null
@@ -862,19 +921,23 @@ class MainViewModel(
                     // Direct coordinates available
                     android.util.Log.d("TRANSITOAPP", "MainViewModel - using direct coordinates")
                     
-                    // Set selected place data for map pin
-                    _selectedPlace.value = SelectedPlaceData(
-                        name = result.title,
-                        description = result.subtitle ?: "",
+                    // Directly set as destination and prepare for journey planner
+                    android.util.Log.d("TRANSITOAPP", "MainViewModel - setting as destination and preparing journey planner")
+                    
+                    // Set as end location for journey planner
+                    _endLocation.value = Location(
+                        address = result.title,
                         coordinates = result.coordinates
                     )
                     
-                    // Close search first
+                    // Set start location to current location if not already set
+                    if (_startLocation.value == null) {
+                        setStartToCurrentLocation()
+                    }
+                    
+                    // Close search and hide bottom sheet
                     closeSearch()
-                    android.util.Log.d("TRANSITOAPP", "MainViewModel - showing bottom sheet for selected place")
-                    // Ensure sheet is visible and expanded for selected place
-                    _showBottomSheet.value = true
-                    _isBottomSheetExpanded.value = true
+                    _showBottomSheet.value = false
                     
                     // Show confirmation
                     _toastMessage.value = "Destinazione selezionata: ${result.title}"

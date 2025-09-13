@@ -19,6 +19,8 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.animation.core.*
 import kotlin.math.cos
 import kotlin.math.sin
@@ -500,6 +502,191 @@ data class ToolbarButton(
     val onClick: () -> Unit,
     val isHighlighted: Boolean = false
 )
+
+@Composable
+fun PlaceSelectionToolbar(
+    onAcceptPlace: () -> Unit,
+    onCloseSelection: () -> Unit,
+    onShowDirections: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    
+    Surface(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(80.dp)
+            .clip(RoundedCornerShape(25.dp)),
+        color = Color.White.copy(alpha = 0.95f),
+        shadowElevation = 12.dp,
+        shape = RoundedCornerShape(25.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Accept Place Button (Left)
+            PlaceSelectionButton(
+                icon = Icons.Filled.Check,
+                title = "Seleziona",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onAcceptPlace()
+                },
+                isPrimary = true
+            )
+            
+            // Close Button (Center)
+            PlaceSelectionButton(
+                icon = Icons.Filled.Close,
+                title = "Chiudi",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onCloseSelection()
+                }
+            )
+            
+            // Directions Button (Right)
+            PlaceSelectionButton(
+                icon = Icons.Filled.Directions,
+                title = "Mappa",
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                    onShowDirections()
+                }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PlaceSelectionButton(
+    icon: ImageVector,
+    title: String,
+    onClick: () -> Unit,
+    isPrimary: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Button(
+        onClick = onClick,
+        modifier = modifier,
+        colors = ButtonDefaults.buttonColors(
+            containerColor = if (isPrimary) Color(0xFFD9731F) else Color.Transparent,
+            contentColor = if (isPrimary) Color.White else MaterialTheme.colorScheme.onSurface
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = title,
+                modifier = Modifier.size(20.dp),
+                tint = if (isPrimary) Color.White else Color(0xFF0B3D91)
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = title,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Medium,
+                color = if (isPrimary) Color.White else Color(0xFF0B3D91)
+            )
+        }
+    }
+}
+
+@Composable
+fun FloatingActionBarWithCenterGap(
+    leftButtons: List<ToolbarButton>,
+    rightButtons: List<ToolbarButton>,
+    centerGap: Dp = 74.dp,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    val barHeight = 50.dp
+    val slotWidth = 54.dp
+    
+    val totalWidth = ((leftButtons.size + rightButtons.size) * slotWidth.value + centerGap.value + 16).dp
+    
+    Surface(
+        modifier = modifier.width(totalWidth),
+        shape = RoundedCornerShape(18.dp),
+        color = Color.White.copy(alpha = 0.95f),
+        shadowElevation = 14.dp
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(barHeight)
+                .padding(horizontal = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // Left buttons
+            Row(horizontalArrangement = Arrangement.Start) {
+                leftButtons.forEach { button ->
+                    ActionBarButton(
+                        button = button,
+                        slotWidth = slotWidth,
+                        barHeight = barHeight
+                    )
+                }
+            }
+            
+            // Center gap for FAB
+            Spacer(modifier = Modifier.width(centerGap))
+            
+            // Right buttons
+            Row(horizontalArrangement = Arrangement.End) {
+                rightButtons.forEach { button ->
+                    ActionBarButton(
+                        button = button,
+                        slotWidth = slotWidth,
+                        barHeight = barHeight
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ActionBarButton(
+    button: ToolbarButton,
+    slotWidth: Dp,
+    barHeight: Dp,
+    modifier: Modifier = Modifier
+) {
+    val haptics = LocalHapticFeedback.current
+    
+    Button(
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            button.onClick()
+        },
+        modifier = modifier
+            .width(slotWidth)
+            .height(barHeight),
+        colors = ButtonDefaults.buttonColors(
+            containerColor = Color.Transparent,
+            contentColor = Color(0xFF0B3D91)
+        ),
+        contentPadding = PaddingValues(0.dp)
+    ) {
+        Icon(
+            imageVector = button.icon,
+            contentDescription = button.contentDescription,
+            modifier = Modifier.size(24.dp),
+            tint = Color(0xFF0B3D91)
+        )
+    }
+}
 
 @Composable
 private fun ToolbarButtonItem(

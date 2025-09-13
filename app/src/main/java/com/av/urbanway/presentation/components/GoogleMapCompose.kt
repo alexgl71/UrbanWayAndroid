@@ -57,12 +57,25 @@ fun UrbanWayMapView(
         GoogleMapsConfig.TURIN_LNG
     )
     
-    val mapLocation = currentLocation?.let { 
+    // Use selected place location if available, otherwise current location
+    val mapLocation = selectedPlace?.let {
+        LatLng(it.coordinates.lat, it.coordinates.lng)
+    } ?: currentLocation?.let { 
         LatLng(it.lat, it.lng) 
     } ?: defaultLocation
     
     val cameraPositionState = rememberCameraPositionState {
         position = CameraPosition.fromLatLngZoom(mapLocation, 16f)
+    }
+    
+    // Move camera to selected place when it changes
+    LaunchedEffect(selectedPlace) {
+        selectedPlace?.let { place ->
+            val placeLocation = LatLng(place.coordinates.lat, place.coordinates.lng)
+            cameraPositionState.animate(
+                CameraUpdateFactory.newLatLngZoom(placeLocation, 17f)
+            )
+        }
     }
     var visibleBounds by remember { mutableStateOf<LatLngBounds?>(null) }
     val markerRefs = remember { mutableStateMapOf<String, Marker>() }
@@ -128,8 +141,13 @@ fun UrbanWayMapView(
                     }
                 }
                 com.av.urbanway.data.models.UIState.NORMAL -> {
-                    // Show ALL stops - let viewport filtering handle the limitation (drag-to-reveal)
-                    stops
+                    // Show closest 25 stops to user location for performance
+                    currentLocation?.let { userCoords ->
+                        val userLatLng = LatLng(userCoords.lat, userCoords.lng)
+                        stops.sortedBy { stop ->
+                            distanceMeters(userLatLng, LatLng(stop.stopLat, stop.stopLon))
+                        }.take(25)
+                    } ?: stops.take(25) // Fallback if no location
                 }
                 else -> emptyList() // Other states: no stops
             }
@@ -265,8 +283,8 @@ fun UrbanWayMapView(
 
         // Reset camera to current location when route is cleared (debounced and conditional)
         LaunchedEffect(uiState, currentLocation) {
-            if (uiState == com.av.urbanway.data.models.UIState.NORMAL && currentLocation != null) {
-                // Only animate back if we're in NORMAL state and have location
+            // Only animate to user location if NO place is selected (selectedPlace takes priority)
+            if (uiState == com.av.urbanway.data.models.UIState.NORMAL && currentLocation != null && selectedPlace == null) {
                 // Small delay to avoid conflicts and ensure state is stable
                 kotlinx.coroutines.delay(500)
                 
@@ -318,15 +336,18 @@ fun UrbanWayMapView(
     
     // Update camera when location changes
     LaunchedEffect(currentLocation) {
-        currentLocation?.let { location ->
-            val newPosition = LatLng(location.lat, location.lng)
-            cameraPositionState.animate(
-                update = CameraUpdateFactory.newLatLngZoom(
-                    newPosition,
-                    16f
-                ),
-                durationMs = 1000
-            )
+        // Only animate to user location if NO place is selected (selectedPlace takes priority)
+        if (selectedPlace == null) {
+            currentLocation?.let { location ->
+                val newPosition = LatLng(location.lat, location.lng)
+                cameraPositionState.animate(
+                    update = CameraUpdateFactory.newLatLngZoom(
+                        newPosition,
+                        16f
+                    ),
+                    durationMs = 1000
+                )
+            }
         }
     }
     LaunchedEffect(Unit) {

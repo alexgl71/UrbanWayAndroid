@@ -1,10 +1,12 @@
 package com.av.urbanway.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
@@ -13,9 +15,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -39,48 +39,42 @@ fun JourneyResultsView(
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Debug logging
+    // Debug logging matching iOS screenshot
     LaunchedEffect(Unit) {
         android.util.Log.d("TRANSIT", "📊 JourneyResults UI State:")
         android.util.Log.d("TRANSIT", "📊 IsLoading: $isLoading")
         android.util.Log.d("TRANSIT", "📊 Journeys count: ${journeyData.journeys.size}")
         if (journeyData.journeys.isNotEmpty()) {
             val first = journeyData.journeys.first()
-            android.util.Log.d("TRANSIT", "📊 First journey: ${first.route1Id} -> ${first.route2Id}")
+            android.util.Log.d("TRANSIT", "📊 First journey: ${first.route1Id} -> ${first.route2Id ?: "nil"}")
         }
     }
     
+    // Main card matching iOS screenshot
     Card(
         modifier = modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
-            .shadow(
-                elevation = 2.dp,
-                spotColor = Color.Black.copy(alpha = 0.1f),
-                ambientColor = Color.Black.copy(alpha = 0.1f)
-            ),
+            .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = Color.White
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 4.dp
         )
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
-            // Header Section
-            HeaderSection(
+            // Header with blue diamond icon and close button (matching iOS)
+            IOSHeaderSection(
                 journeyData = journeyData,
                 onBack = onBack
-            )
-            
-            HorizontalDivider(
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.1f),
-                modifier = Modifier.padding(vertical = 8.dp)
             )
             
             // Content
             when {
                 isLoading -> LoadingView()
                 journeyData.journeys.isEmpty() -> NoResultsView()
-                else -> JourneyResultsList(
+                else -> IOSJourneyResultsList(
                     journeys = journeyData.journeys,
                     onJourneySelect = onJourneySelect
                 )
@@ -89,79 +83,374 @@ fun JourneyResultsView(
     }
 }
 
+// Header matching iOS screenshot exactly
 @Composable
-private fun HeaderSection(
+private fun IOSHeaderSection(
     journeyData: JourneyResultsData,
     onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Row(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(4.dp)
+        // Top row with diamond icon, title and close button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            // Blue diamond icon
+            Box(
+                modifier = Modifier
+                    .size(32.dp)
+                    .background(
+                        Color(0xFF007AFF),
+                        RoundedCornerShape(8.dp)
+                    ),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Navigation,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+            
+            Spacer(modifier = Modifier.width(12.dp))
+            
             Text(
-                text = "Percorsi Disponibili",
+                text = "Percorsi disponibili",
                 fontSize = 20.sp,
                 fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = Color.Black,
+                modifier = Modifier.weight(1f)
             )
             
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
+            // Close button
+            IconButton(onClick = onBack) {
+                Box(
+                    modifier = Modifier
+                        .size(30.dp)
+                        .background(Color.Black, CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = journeyData.fromAddress,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
-                    )
-                }
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.FlagCircle,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = journeyData.toAddress,
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1
+                        imageVector = Icons.Filled.Close,
+                        contentDescription = "Close",
+                        tint = Color.White,
+                        modifier = Modifier.size(16.dp)
                     )
                 }
             }
         }
         
-        IconButton(onClick = onBack) {
-            Icon(
-                imageVector = Icons.Filled.ArrowBack,
-                contentDescription = "Back",
-                tint = MaterialTheme.colorScheme.onSurface
+        Spacer(modifier = Modifier.height(16.dp))
+        
+        // From and To addresses
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Row {
+                Text(
+                    text = "DA:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black,
+                    modifier = Modifier.width(40.dp)
+                )
+                Text(
+                    text = journeyData.fromAddress,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+            }
+            
+            Row {
+                Text(
+                    text = "A:",
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = Color.Black,
+                    modifier = Modifier.width(40.dp)
+                )
+                Text(
+                    text = journeyData.toAddress,
+                    fontSize = 14.sp,
+                    color = Color.Black
+                )
+            }
+        }
+    }
+}
+
+// iOS-style journey results list
+@Composable
+private fun IOSJourneyResultsList(
+    journeys: List<JourneyOption>,
+    onJourneySelect: (JourneyOption) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val groupedJourneys = groupAndOptimizeJourneys(journeys)
+    
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        // Direct journeys section
+        if (groupedJourneys.directJourneys.isNotEmpty()) {
+            item {
+                IOSSectionHeader(
+                    title = "Diretto",
+                    color = Color(0xFF4CAF50) // Green
+                )
+            }
+            
+            items(groupedJourneys.directJourneys) { journey ->
+                IOSDirectJourneyItem(
+                    journey = journey,
+                    onClick = { onJourneySelect(journey) }
+                )
+                
+                // Add divider except for last item
+                if (journey != groupedJourneys.directJourneys.last()) {
+                    HorizontalDivider(
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(start = 64.dp) // Start after the route circle
+                    )
+                }
+            }
+            
+            if (groupedJourneys.transferJourneys.isNotEmpty()) {
+                item { Spacer(modifier = Modifier.height(16.dp)) }
+            }
+        }
+        
+        // Transfer journeys section  
+        if (groupedJourneys.transferJourneys.isNotEmpty()) {
+            item {
+                IOSSectionHeader(
+                    title = "Cambio",
+                    color = Color(0xFFFF9500) // Orange
+                )
+            }
+            
+            items(groupedJourneys.transferJourneys) { journey ->
+                IOSTransferJourneyItem(
+                    journey = journey,
+                    onClick = { onJourneySelect(journey) }
+                )
+                
+                // Add divider except for last item
+                if (journey != groupedJourneys.transferJourneys.last()) {
+                    HorizontalDivider(
+                        color = Color.Gray.copy(alpha = 0.2f),
+                        thickness = 0.5.dp,
+                        modifier = Modifier.padding(start = 112.dp) // Start after the two route circles
+                    )
+                }
+            }
+        }
+    }
+}
+
+// Section header matching iOS
+@Composable
+private fun IOSSectionHeader(
+    title: String,
+    color: Color,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .background(color.copy(alpha = 0.8f), RoundedCornerShape(12.dp))
+            .padding(horizontal = 12.dp, vertical = 6.dp)
+    ) {
+        Text(
+            text = title,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White
+        )
+    }
+}
+
+// Direct journey item matching iOS screenshot
+@Composable
+private fun IOSDirectJourneyItem(
+    journey: JourneyOption,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Route circle
+        IOSRouteCircle(routeId = journey.route1Id)
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Journey details
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${journey.totalStops} fermate",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DirectionsWalk,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = Color.Gray
+                )
+                Text(
+                    text = "${journey.walkingTimeMinutes}' a piedi",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+        
+        // Time with beige background
+        Box(
+            modifier = Modifier
+                .background(
+                    Color(0xFFF5F5DC), // Beige color
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "${journey.totalJourneyMinutes}'",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
             )
         }
     }
 }
 
+// Transfer journey item matching iOS screenshot
+@Composable
+private fun IOSTransferJourneyItem(
+    journey: JourneyOption,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Route circles with arrow
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            IOSRouteCircle(routeId = journey.route1Id)
+            
+            Icon(
+                imageVector = Icons.Filled.ChevronRight,
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                tint = Color.Gray
+            )
+            
+            journey.route2Id?.let { route2Id ->
+                IOSRouteCircle(routeId = route2Id)
+            }
+        }
+        
+        Spacer(modifier = Modifier.width(16.dp))
+        
+        // Journey details
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = "${journey.totalStops} fermate",
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = Color.Black
+            )
+            
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.DirectionsWalk,
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = Color.Gray
+                )
+                Text(
+                    text = "${journey.walkingTimeMinutes}' a piedi",
+                    fontSize = 14.sp,
+                    color = Color.Gray
+                )
+            }
+        }
+        
+        // Time with beige background
+        Box(
+            modifier = Modifier
+                .background(
+                    Color(0xFFF5F5DC), // Beige color
+                    RoundedCornerShape(8.dp)
+                )
+                .padding(horizontal = 8.dp, vertical = 4.dp)
+        ) {
+            Text(
+                text = "${journey.totalJourneyMinutes}'",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.Black
+            )
+        }
+    }
+}
+
+// Route circle matching iOS style
+@Composable
+private fun IOSRouteCircle(
+    routeId: String,
+    modifier: Modifier = Modifier
+) {
+    // Remove 'U' suffix if present
+    val displayRouteId = if (routeId.endsWith("U")) {
+        routeId.dropLast(1)
+    } else {
+        routeId
+    }
+    
+    Box(
+        modifier = modifier
+            .size(48.dp)
+            .border(1.dp, Color(0xFF007AFF), CircleShape),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = displayRouteId,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            color = Color(0xFF007AFF),
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+// Loading view
 @Composable
 private fun LoadingView(modifier: Modifier = Modifier) {
     Column(
@@ -173,7 +462,8 @@ private fun LoadingView(modifier: Modifier = Modifier) {
     ) {
         CircularProgressIndicator(
             modifier = Modifier.size(32.dp),
-            strokeWidth = 3.dp
+            strokeWidth = 3.dp,
+            color = Color(0xFF007AFF)
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -181,11 +471,12 @@ private fun LoadingView(modifier: Modifier = Modifier) {
         Text(
             text = "Ricerca percorsi in corso...",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            color = Color.Gray
         )
     }
 }
 
+// No results view
 @Composable
 private fun NoResultsView(modifier: Modifier = Modifier) {
     Column(
@@ -199,7 +490,7 @@ private fun NoResultsView(modifier: Modifier = Modifier) {
             imageVector = Icons.Filled.DirectionsBus,
             contentDescription = null,
             modifier = Modifier.size(48.dp),
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f)
+            tint = Color.Gray.copy(alpha = 0.5f)
         )
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -208,7 +499,7 @@ private fun NoResultsView(modifier: Modifier = Modifier) {
             text = "Nessun percorso trovato",
             fontSize = 16.sp,
             fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+            color = Color.Gray
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -216,346 +507,13 @@ private fun NoResultsView(modifier: Modifier = Modifier) {
         Text(
             text = "Prova a modificare i punti di partenza o arrivo",
             fontSize = 14.sp,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.4f),
+            color = Color.Gray,
             textAlign = TextAlign.Center
         )
     }
 }
 
-@Composable
-private fun JourneyResultsList(
-    journeys: List<JourneyOption>,
-    onJourneySelect: (JourneyOption) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val groupedJourneys = groupAndOptimizeJourneys(journeys)
-    
-    LazyColumn(
-        modifier = modifier.fillMaxSize(),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
-    ) {
-        // Direct Journeys Section
-        if (groupedJourneys.directJourneys.isNotEmpty()) {
-            item {
-                JourneySectionHeader(
-                    title = "Percorsi Diretti",
-                    subtitle = "${groupedJourneys.directJourneys.size} linea/e senza cambi",
-                    icon = Icons.Filled.DirectionsBus
-                )
-            }
-            
-            itemsIndexed(groupedJourneys.directJourneys) { index, journey ->
-                JourneyResultItem(
-                    journey = journey,
-                    isRecommended = index == 0 && groupedJourneys.transferJourneys.isEmpty(),
-                    onClick = { onJourneySelect(journey) }
-                )
-            }
-            
-            if (groupedJourneys.transferJourneys.isNotEmpty()) {
-                item { Spacer(modifier = Modifier.height(8.dp)) }
-            }
-        }
-        
-        // Transfer Journeys Section
-        if (groupedJourneys.transferJourneys.isNotEmpty()) {
-            item {
-                JourneySectionHeader(
-                    title = "Percorsi con Cambio",
-                    subtitle = "${groupedJourneys.transferJourneys.size} combinazione/i di linee",
-                    icon = Icons.Filled.SwapHoriz
-                )
-            }
-            
-            itemsIndexed(groupedJourneys.transferJourneys) { index, journey ->
-                JourneyResultItem(
-                    journey = journey,
-                    isRecommended = index == 0 && groupedJourneys.directJourneys.isEmpty(),
-                    onClick = { onJourneySelect(journey) }
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun JourneySectionHeader(
-    title: String,
-    subtitle: String,
-    icon: ImageVector,
-    modifier: Modifier = Modifier
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                shape = RoundedCornerShape(8.dp)
-            )
-            .padding(16.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(20.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
-        
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(2.dp)
-        ) {
-            Text(
-                text = title,
-                fontSize = 16.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
-            )
-            
-            Text(
-                text = subtitle,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun JourneyResultItem(
-    journey: JourneyOption,
-    isRecommended: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier
-            .fillMaxWidth()
-            .clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = if (isRecommended) {
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant
-            }
-        ),
-        border = if (isRecommended) {
-            androidx.compose.foundation.BorderStroke(
-                1.dp,
-                MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-            )
-        } else null
-    ) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            if (isRecommended) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Star,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = Color.White
-                    )
-                    Text(
-                        text = "CONSIGLIATO",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White,
-                        letterSpacing = 0.5.sp
-                    )
-                }
-                .let { content ->
-                    Box(
-                        modifier = Modifier
-                            .background(
-                                color = MaterialTheme.colorScheme.primary,
-                                shape = RoundedCornerShape(4.dp)
-                            )
-                            .padding(horizontal = 8.dp, vertical = 4.dp)
-                    ) {
-                        content
-                    }
-                }
-            }
-            
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    modifier = Modifier.weight(1f),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (journey.isDirect == 1) {
-                        RouteChip(routeId = journey.route1Id)
-                        Text(
-                            text = "DIRETTO",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    } else {
-                        RouteChip(routeId = journey.route1Id)
-                        Icon(
-                            imageVector = Icons.Filled.ArrowForward,
-                            contentDescription = null,
-                            modifier = Modifier.size(12.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        journey.route2Id?.let { route2Id ->
-                            RouteChip(routeId = route2Id)
-                        }
-                    }
-                }
-                
-                Text(
-                    text = "${journey.totalJourneyMinutes} min",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            
-            // Headsigns line
-            if (!journey.route1Headsign.isNullOrEmpty() || !journey.route2Headsign.isNullOrEmpty()) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Signpost,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    journey.route1Headsign?.takeIf { it.isNotEmpty() }?.let { headsign ->
-                        Text(
-                            text = headsign,
-                            fontSize = 12.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (journey.isDirect == 0) {
-                        journey.route2Headsign?.takeIf { it.isNotEmpty() }?.let { headsign ->
-                            Icon(
-                                imageVector = Icons.Filled.ArrowForward,
-                                contentDescription = null,
-                                modifier = Modifier.size(12.dp),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Text(
-                                text = headsign,
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-                }
-            }
-            
-            // Time line
-            if (journey.depTime != null && journey.arrTime != null) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Schedule,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${formatTime(journey.depTime)} → ${formatTime(journey.arrTime)}",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.DirectionsWalk,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${journey.totalWalkingDistance}m",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "(${journey.walkingTimeMinutes} min)",
-                        fontSize = 11.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-                
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.LocationOn,
-                        contentDescription = null,
-                        modifier = Modifier.size(12.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = "${journey.totalStops} fermate",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun RouteChip(
-    routeId: String,
-    modifier: Modifier = Modifier
-) {
-    val backgroundColor = when {
-        routeId.uppercase().contains("METRO") -> Color(0xFFF44336) // Red
-        routeId.endsWith("U") -> Color(0xFF2196F3) // Blue
-        else -> Color(0xFF2196F3) // Blue
-    }
-    
-    Text(
-        text = routeId,
-        fontSize = 12.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.White,
-        modifier = modifier
-            .background(
-                color = backgroundColor,
-                shape = RoundedCornerShape(4.dp)
-            )
-            .padding(horizontal = 8.dp, vertical = 4.dp)
-    )
-}
-
-// Journey Grouping Logic
+// Journey grouping logic
 data class GroupedJourneyResults(
     val directJourneys: List<JourneyOption>,
     val transferJourneys: List<JourneyOption>
@@ -564,44 +522,37 @@ data class GroupedJourneyResults(
 private fun groupAndOptimizeJourneys(journeys: List<JourneyOption>): GroupedJourneyResults {
     android.util.Log.d("TRANSIT", "🔍 Smart grouping ${journeys.size} journeys into direct vs transfer")
     
-    val directJourneysMap = journeys
+    val directJourneys = journeys
         .filter { it.isDirect == 1 }
         .groupBy { it.route1Id }
-    
-    val directJourneys = directJourneysMap.mapNotNull { (routeId, groupedJourneys) ->
-        val best = groupedJourneys.minByOrNull { it.totalJourneyMinutes }
-        if (best != null) {
-            android.util.Log.d("TRANSIT", "🔍 Direct route $routeId: ${best.totalJourneyMinutes}min (from ${groupedJourneys.size} options)")
+        .mapNotNull { (routeId, groupedJourneys) ->
+            val best = groupedJourneys.minByOrNull { it.totalJourneyMinutes }
+            if (best != null) {
+                android.util.Log.d("TRANSIT", "🔍 Direct route $routeId: ${best.totalJourneyMinutes}min")
+            }
+            best
         }
-        best
-    }.sortedBy { it.totalJourneyMinutes }
+        .sortedBy { it.totalJourneyMinutes }
     
-    val transferJourneys = journeys.filter { it.isDirect == 0 }
-    
-    val transferJourneysMap = transferJourneys.groupBy { journey ->
-        val routes = listOfNotNull(journey.route1Id, journey.route2Id).sorted()
-        routes.joinToString(" + ")
-    }
-    
-    val optimizedTransferJourneys = transferJourneysMap.mapNotNull { (combination, groupedJourneys) ->
-        val best = groupedJourneys.minByOrNull { it.totalJourneyMinutes }
-        if (best != null) {
-            android.util.Log.d("TRANSIT", "🔍 Transfer combination $combination: ${best.totalJourneyMinutes}min (from ${groupedJourneys.size} options)")
+    val transferJourneys = journeys
+        .filter { it.isDirect == 0 }
+        .groupBy { journey ->
+            val routes = listOfNotNull(journey.route1Id, journey.route2Id).sorted()
+            routes.joinToString(" + ")
         }
-        best
-    }.sortedBy { it.totalJourneyMinutes }
+        .mapNotNull { (combination, groupedJourneys) ->
+            val best = groupedJourneys.minByOrNull { it.totalJourneyMinutes }
+            if (best != null) {
+                android.util.Log.d("TRANSIT", "🔍 Transfer combination $combination: ${best.totalJourneyMinutes}min")
+            }
+            best
+        }
+        .sortedBy { it.totalJourneyMinutes }
     
-    android.util.Log.d("TRANSIT", "🎯 Final results: ${directJourneys.size} direct + ${optimizedTransferJourneys.size} transfer = ${directJourneys.size + optimizedTransferJourneys.size} total")
+    android.util.Log.d("TRANSIT", "🎯 Final results: ${directJourneys.size} direct + ${transferJourneys.size} transfer")
     
     return GroupedJourneyResults(
         directJourneys = directJourneys,
-        transferJourneys = optimizedTransferJourneys
+        transferJourneys = transferJourneys
     )
-}
-
-private fun formatTime(seconds: Int): String {
-    val s = maxOf(0, seconds) % (24 * 3600)
-    val h = s / 3600
-    val m = (s % 3600) / 60
-    return String.format("%02d:%02d", h, m)
 }

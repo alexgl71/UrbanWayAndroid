@@ -36,6 +36,7 @@ fun HomePage(
     val nearbyDepartures by viewModel.nearbyDepartures.collectAsState()
     val nearbyStops by viewModel.nearbyStops.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
+    val selectedPlace by viewModel.selectedPlace.collectAsState()
 
     Column(
         modifier = Modifier
@@ -43,10 +44,16 @@ fun HomePage(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Search bar with address display
+        // Search bar with address display - shows selected place when available, otherwise current location
         AddressSearchBar(
-            address = currentLocation?.address ?: "Ricerca posizione...",
-            onClick = { viewModel.openSearch() },
+            address = selectedPlace?.name ?: currentLocation?.address ?: "Ricerca posizione...",
+            onClick = { 
+                if (selectedPlace != null) {
+                    // Clear selected place and return to search
+                    viewModel.clearSelectedPlace()
+                }
+                viewModel.openSearch() 
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)

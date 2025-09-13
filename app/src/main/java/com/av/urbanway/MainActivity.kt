@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            UrbanWayTheme {
+            UrbanWayTheme(darkTheme = false) { // Explicitly force light theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color(0xFFD9731F) // UrbanWay brand color

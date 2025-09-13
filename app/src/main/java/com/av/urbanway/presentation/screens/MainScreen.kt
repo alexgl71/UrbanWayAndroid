@@ -14,6 +14,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.zIndex
@@ -47,6 +48,7 @@ import com.av.urbanway.presentation.components.ContextualFABButtons
 import com.av.urbanway.presentation.components.DefaultFABButtons
 import com.av.urbanway.presentation.components.UnifiedFloatingToolbar
 import com.av.urbanway.presentation.components.IOSFloatingToolbar
+import com.av.urbanway.presentation.components.FloatingActionBarWithCenterGap
 import com.av.urbanway.presentation.components.ToolbarButton
 import com.av.urbanway.presentation.components.SearchScreen
 import com.av.urbanway.presentation.navigation.Screen
@@ -67,6 +69,8 @@ fun MainScreen() {
     val alertMessage by viewModel.alertMessage.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
     val selectedPlace by viewModel.selectedPlace.collectAsState()
+    val startLocation by viewModel.startLocation.collectAsState()
+    val endLocation by viewModel.endLocation.collectAsState()
     
     var hasLocationPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var showLocationPermissionRequest by remember { mutableStateOf(!hasLocationPermission) }
@@ -98,6 +102,14 @@ fun MainScreen() {
     // Bootstrap full stops catalog (download once or load from disk)
     LaunchedEffect(Unit) {
         viewModel.bootstrapStopsIfNeeded(context)
+    }
+    
+    // Navigate to Journey Planner when both start and end locations are set
+    LaunchedEffect(startLocation, endLocation) {
+        if (startLocation != null && endLocation != null && uiState != UIState.SEARCHING) {
+            // Both locations are set, navigate to Journey Planner
+            navController.navigate(Screen.JourneyPlanner.route)
+        }
     }
 
     Box(
@@ -181,6 +193,7 @@ fun MainScreen() {
             
             composable(Screen.FullscreenMap.route) {
                 FullscreenMapScreen(
+                    viewModel = viewModel,
                     onBack = { navController.popBackStack() }
                 )
             }
@@ -292,34 +305,40 @@ fun MainScreen() {
             }
         }
         
-        // iOS-style toolbar - shown when bottom sheet is visible and not in SEARCHING state
-        if (showBottomSheet && uiState != UIState.SEARCHING) {
-            IOSFloatingToolbar(
-                onMapTap = {
-                    // Navigate to fullscreen map
-                    navController.navigate(Screen.FullscreenMap.route)
-                },
-                onFavoritesTap = {
-                    // Handle favorites (placeholder for now)
-                    viewModel.showToast("Preferiti - Feature in development")
-                },
-                onJourneyTap = {
-                    // Navigate to journey planner with selected place as destination if available
-                    val currentSelectedPlace = selectedPlace
-                    if (currentSelectedPlace != null) {
-                        android.util.Log.d("TRANSITOAPP", "Navigating to journey planner with destination: ${currentSelectedPlace.name}")
-                        navController.navigate(Screen.JourneyPlanner.route)
-                    } else {
-                        // Navigate to journey planner without predefined destination
-                        navController.navigate(Screen.JourneyPlanner.route)
-                    }
-                },
-                showButtons = true,
+        // iOS-style place selection toolbar - shown when place is selected (matches iOS DraggableBottomSheet)
+        val showPlaceSelectionToolbar = selectedPlace != null && uiState != UIState.SEARCHING
+        if (showPlaceSelectionToolbar) {
+            Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = (-20).dp)
-                    .zIndex(3f) // Below FAB but above map
-            )
+                    .offset(y = (-100).dp)
+                    .zIndex(3f)
+            ) {
+                FloatingActionBarWithCenterGap(
+                    leftButtons = listOf(
+                        ToolbarButton(
+                            icon = Icons.Filled.Route,
+                            contentDescription = "Percorso",
+                            onClick = {
+                                android.util.Log.d("TRANSITOAPP", "Starting journey to selected place")
+                                viewModel.startJourneyToSelectedPlace()
+                                navController.navigate(Screen.JourneyPlanner.route)
+                            }
+                        )
+                    ),
+                    rightButtons = listOf(
+                        ToolbarButton(
+                            icon = Icons.Filled.DirectionsWalk,
+                            contentDescription = "A piedi",
+                            onClick = {
+                                android.util.Log.d("TRANSITOAPP", "Show walking directions")
+                                // TODO: Implement walking directions
+                                viewModel.showToast("Indicazioni a piedi - Feature in development")
+                            }
+                        )
+                    )
+                )
+            }
         }
 
         // Global Toast Overlay
