@@ -818,10 +818,11 @@ class MainViewModel(
     }
     
     fun updateSearchQuery(query: String) {
-        android.util.Log.d("TRANSITOAPP", "MainViewModel - updateSearchQuery called with: '$query'")
+        android.util.Log.d("TRANSITO", "MainViewModel - updateSearchQuery called with: '$query'")
         _searchQuery.value = query
+        android.util.Log.d("TRANSITO", "MainViewModel - _searchQuery.value updated to: '${_searchQuery.value}'")
         val userLocation = _currentLocation.value?.coordinates
-        android.util.Log.d("TRANSITOAPP", "MainViewModel - calling placesService.startAutocomplete with location: $userLocation")
+        android.util.Log.d("TRANSITO", "MainViewModel - calling placesService.startAutocomplete with location: $userLocation")
         placesService.startAutocomplete(query, userLocation)
     }
 
