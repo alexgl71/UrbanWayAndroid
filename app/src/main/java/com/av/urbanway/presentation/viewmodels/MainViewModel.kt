@@ -143,7 +143,10 @@ class MainViewModel(
     
     private val _journeys = MutableStateFlow<List<JourneyOption>>(emptyList())
     val journeys: StateFlow<List<JourneyOption>> = _journeys.asStateFlow()
-    
+
+    private val _selectedJourney = MutableStateFlow<JourneyOption?>(null)
+    val selectedJourney: StateFlow<JourneyOption?> = _selectedJourney.asStateFlow()
+
     private val _selectedStop = MutableStateFlow<StopInfo?>(null)
     val selectedStop: StateFlow<StopInfo?> = _selectedStop.asStateFlow()
     
@@ -223,7 +226,7 @@ class MainViewModel(
     // Legacy support - computed properties for backward compatibility
     val isSearchActive: Boolean
         get() = when (_uiState.value) {
-            UIState.NORMAL, UIState.ROUTE_DETAIL -> false
+            UIState.NORMAL, UIState.ROUTE_DETAIL, UIState.JOURNEY_VIEW -> false
             UIState.SEARCHING, UIState.JOURNEY_PLANNING, UIState.EDITING_JOURNEY_FROM, UIState.EDITING_JOURNEY_TO -> true
         }
     
@@ -335,10 +338,18 @@ class MainViewModel(
 
     fun expandBottomSheet() { _isBottomSheetExpanded.value = true }
     fun collapseBottomSheet() { _isBottomSheetExpanded.value = false }
-    fun toggleBottomSheetExpanded() { 
+    fun toggleBottomSheetExpanded() {
         val wasExpanded = _isBottomSheetExpanded.value
         _isBottomSheetExpanded.value = !wasExpanded
-        
+
+        android.util.Log.d("TRANSITOAPP", "📱 Bottom sheet toggled: expanded=$wasExpanded -> ${!wasExpanded}")
+
+        // Clear journey when collapsing sheet
+        if (wasExpanded) {
+            android.util.Log.d("TRANSITOAPP", "📱 Collapsing sheet - clearing journey")
+            clearSelectedJourney()
+        }
+
         // Set animation flag to prevent map redrawing during transition
         _isSheetAnimating.value = true
         
@@ -910,8 +921,212 @@ class MainViewModel(
     }
 
     fun showFixedJourneyOverlay(journey: JourneyOption) {
-        // This would show the journey on the map overlay in the bottom sheet
-        _toastMessage.value = "Viaggio selezionato: ${journey.route1Id}"
+        android.util.Log.d("TRANSITOAPP", "📍 Journey selected: ${journey.route1Id} -> ${journey.route2Id ?: "direct"}")
+        android.util.Log.d("TRANSITOAPP", "📍 Trip IDs - trip1: ${journey.trip1Id}, trip2: ${journey.trip2Id}")
+        android.util.Log.d("TRANSITOAPP", "📍 Journey isDirect: ${journey.isDirect}")
+
+        // Set UI state to journey view
+        _uiState.value = UIState.JOURNEY_VIEW
+
+        // Set the selected journey
+        _selectedJourney.value = journey
+
+        // Show and expand bottom sheet to display journey map
+        _showBottomSheet.value = true
+        expandBottomSheet()
+
+        // Fetch trip details to get polyline shapes
+        viewModelScope.launch {
+            try {
+                _isLoadingJourneys.value = true
+
+                // Fetch first trip details
+                val trip1Id = journey.trip1Id
+                if (trip1Id != null) {
+                    android.util.Log.d("TRANSITOAPP", "📍 Fetching trip details for trip1: $trip1Id")
+
+                    transitRepository.getTripDetails(trip1Id).collect { result ->
+                        when (result) {
+                            is APIResult.Success -> {
+                                android.util.Log.d("TRANSITOAPP", "📍 Trip1 details fetched successfully")
+                                android.util.Log.d("TRANSITOAPP", "📍 Trip1 raw stops count: ${result.data.stops?.size}")
+
+                                // Filter stops based on start/end stop IDs (iOS logic)
+                                val route1StartStopId = journey.route1StartStopId?.toString()
+                                val route1EndStopId = journey.route1EndStopId?.toString()
+
+                                android.util.Log.d("TRANSITOAPP", "📍 Trip1 filtering: start=$route1StartStopId, end=$route1EndStopId")
+
+                                val filteredStops1 = if (route1StartStopId != null && route1EndStopId != null && result.data.stops != null) {
+                                    sliceStops(result.data.stops, route1StartStopId, route1EndStopId)
+                                } else {
+                                    result.data.stops ?: emptyList()
+                                }
+
+                                android.util.Log.d("TRANSITOAPP", "📍 Trip1 filtered stops count: ${filteredStops1.size}")
+
+                                // Create polyline from stop coordinates (iOS approach)
+                                val shapes1 = filteredStops1.map { stop ->
+                                    mapOf(
+                                        "lat" to stop.stopLat,
+                                        "lon" to stop.stopLon
+                                    )
+                                }
+
+                                // Store stop data for pins
+                                val stops1 = filteredStops1.map { stop ->
+                                    mapOf(
+                                        "stopId" to stop.stopId,
+                                        "stopLat" to stop.stopLat,
+                                        "stopLon" to stop.stopLon,
+                                        "stopName" to stop.stopName
+                                    )
+                                }
+
+                                android.util.Log.d("TRANSITOAPP", "📍 Trip1 polyline points: ${shapes1.size}")
+
+                                val updatedJourney = journey.copy(
+                                    shapes = shapes1,
+                                    stops = stops1
+                                )
+
+                                // Fetch second trip if this is a transfer journey
+                                val trip2Id = journey.trip2Id
+                                if (trip2Id != null && journey.isDirect == 0) {
+                                    android.util.Log.d("TRANSITOAPP", "📍 Fetching trip details for trip2: $trip2Id")
+
+                                    transitRepository.getTripDetails(trip2Id).collect { result2 ->
+                                        when (result2) {
+                                            is APIResult.Success -> {
+                                                android.util.Log.d("TRANSITOAPP", "📍 Trip2 details fetched successfully")
+                                                android.util.Log.d("TRANSITOAPP", "📍 Trip2 raw stops count: ${result2.data.stops?.size}")
+
+                                                // Filter stops based on start/end stop IDs (iOS logic)
+                                                val route2StartStopId = journey.route2StartStopId?.toString()
+                                                val route2EndStopId = journey.route2EndStopId?.toString()
+
+                                                android.util.Log.d("TRANSITOAPP", "📍 Trip2 filtering: start=$route2StartStopId, end=$route2EndStopId")
+
+                                                val filteredStops2 = if (route2StartStopId != null && route2EndStopId != null && result2.data.stops != null) {
+                                                    sliceStops(result2.data.stops, route2StartStopId, route2EndStopId)
+                                                } else {
+                                                    result2.data.stops ?: emptyList()
+                                                }
+
+                                                android.util.Log.d("TRANSITOAPP", "📍 Trip2 filtered stops count: ${filteredStops2.size}")
+
+                                                // Create polyline from stop coordinates (iOS approach)
+                                                val shapes2 = filteredStops2.map { stop ->
+                                                    mapOf(
+                                                        "lat" to stop.stopLat,
+                                                        "lon" to stop.stopLon
+                                                    )
+                                                }
+
+                                                // Store stop data for pins
+                                                val stops2 = filteredStops2.map { stop ->
+                                                    mapOf(
+                                                        "stopId" to stop.stopId,
+                                                        "stopLat" to stop.stopLat,
+                                                        "stopLon" to stop.stopLon,
+                                                        "stopName" to stop.stopName
+                                                    )
+                                                }
+
+                                                android.util.Log.d("TRANSITOAPP", "📍 Trip2 polyline points: ${shapes2.size}")
+
+                                                val finalJourney = updatedJourney.copy(
+                                                    shapes2 = shapes2,
+                                                    stops2 = stops2
+                                                )
+
+                                                _selectedJourney.value = finalJourney
+                                                _isLoadingJourneys.value = false
+
+                                                android.util.Log.d("TRANSITOAPP", "📍 Final journey updated with both shapes")
+                                                android.util.Log.d("TRANSITOAPP", "📍 Final journey shapes1: ${finalJourney.shapes?.size}")
+                                                android.util.Log.d("TRANSITOAPP", "📍 Final journey shapes2: ${finalJourney.shapes2?.size}")
+
+                                                _toastMessage.value = "Percorso caricato: ${journey.route1Id} + ${journey.route2Id}"
+                                            }
+                                            is APIResult.Error -> {
+                                                android.util.Log.e("TRANSITOAPP", "📍 Error fetching trip2 details: ${result2.exception.message}")
+                                                _selectedJourney.value = updatedJourney // Use first trip only
+                                                _isLoadingJourneys.value = false
+                                                _toastMessage.value = "Percorso caricato: ${journey.route1Id}"
+                                            }
+                                        }
+                                    }
+                                } else {
+                                    // Direct journey - only one trip
+                                    _selectedJourney.value = updatedJourney
+                                    _isLoadingJourneys.value = false
+
+                                    android.util.Log.d("TRANSITOAPP", "📍 Direct journey updated with shapes")
+                                    android.util.Log.d("TRANSITOAPP", "📍 Direct journey shapes: ${updatedJourney.shapes?.size}")
+
+                                    _toastMessage.value = "Percorso caricato: ${journey.route1Id}"
+                                }
+                            }
+                            is APIResult.Error -> {
+                                android.util.Log.e("TRANSITOAPP", "📍 Error fetching trip1 details: ${result.exception.message}")
+                                _selectedJourney.value = journey // Keep original without shapes
+                                _isLoadingJourneys.value = false
+                                _toastMessage.value = "Errore nel caricamento percorso"
+                            }
+                        }
+                    }
+                } else {
+                    android.util.Log.w("TRANSITOAPP", "📍 No trip1Id available for journey")
+                    _selectedJourney.value = journey
+                    _isLoadingJourneys.value = false
+                    _toastMessage.value = "Percorso selezionato senza dettagli"
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("TRANSITOAPP", "📍 Exception in showFixedJourneyOverlay: ${e.message}")
+                _selectedJourney.value = journey
+                _isLoadingJourneys.value = false
+                _toastMessage.value = "Errore nel caricamento percorso"
+            }
+        }
+    }
+
+    fun clearSelectedJourney() {
+        android.util.Log.d("TRANSITOAPP", "📍 Clearing selected journey")
+        _selectedJourney.value = null
+        _uiState.value = UIState.NORMAL
+        android.util.Log.d("TRANSITOAPP", "📍 UI state reset to NORMAL")
+        // Note: Don't collapse bottom sheet here - let user do it with FAB
+    }
+
+    // iOS equivalent sliceStops function
+    private fun sliceStops(
+        rawStops: List<com.av.urbanway.data.models.TripStop>,
+        startStopId: String,
+        endStopId: String
+    ): List<com.av.urbanway.data.models.TripStop> {
+        android.util.Log.d("TRANSITOAPP", "📍 Slicing stops from $startStopId to $endStopId")
+
+        val startIndex = rawStops.indexOfFirst { it.stopId == startStopId }
+        val endIndex = rawStops.indexOfFirst { it.stopId == endStopId }
+
+        android.util.Log.d("TRANSITOAPP", "📍 Found indices: start=$startIndex, end=$endIndex")
+
+        if (startIndex == -1 || endIndex == -1) {
+            android.util.Log.w("TRANSITOAPP", "📍 Stop IDs not found in trip, returning all stops")
+            return rawStops
+        }
+
+        val low = minOf(startIndex, endIndex)
+        val high = maxOf(startIndex, endIndex)
+        val slicedStops = rawStops.subList(low, high + 1)
+
+        // Reverse if we're going backwards
+        return if (startIndex > endIndex) {
+            slicedStops.reversed()
+        } else {
+            slicedStops
+        }
     }
 
     fun selectSearchResult(result: SearchResult) {

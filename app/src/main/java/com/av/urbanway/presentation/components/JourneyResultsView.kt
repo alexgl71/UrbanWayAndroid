@@ -69,7 +69,7 @@ fun JourneyResultsView(
                 journeyData = journeyData,
                 onBack = onBack
             )
-            
+
             // Content
             when {
                 isLoading -> LoadingView()

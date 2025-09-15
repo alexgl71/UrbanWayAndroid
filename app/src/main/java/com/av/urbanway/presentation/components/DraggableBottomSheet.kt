@@ -69,6 +69,9 @@ fun DraggableBottomSheet(
     val uiState by viewModel.uiState.collectAsState()
     val isSheetAnimating by viewModel.isSheetAnimating.collectAsState()
     val selectedPlace by viewModel.selectedPlace.collectAsState()
+    val selectedJourney by viewModel.selectedJourney.collectAsState()
+    val startLocation by viewModel.startLocation.collectAsState()
+    val endLocation by viewModel.endLocation.collectAsState()
 
     if (!showBottomSheet) return
 
@@ -116,7 +119,8 @@ fun DraggableBottomSheet(
                         selectedStopId = routeDetailData?.get("stopId") as? String,
                         uiState = uiState,
                         isSheetAnimating = isSheetAnimating,
-                        selectedPlace = selectedPlace
+                        selectedPlace = selectedPlace,
+                        selectedJourney = selectedJourney
                     )
                     // Center fixed red circle overlay (independent of the map)
                     Box(
@@ -188,6 +192,98 @@ fun DraggableBottomSheet(
                                         Text(
                                             text = "Caricamento percorso...",
                                             style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    } else if (selectedJourney != null && uiState == com.av.urbanway.data.models.UIState.JOURNEY_VIEW) {
+                        // Detailed Journey Information Overlay
+                        androidx.compose.animation.AnimatedVisibility(
+                            visible = true,
+                            enter = androidx.compose.animation.fadeIn(animationSpec = androidx.compose.animation.core.tween(300)) +
+                                   androidx.compose.animation.slideInVertically(
+                                       animationSpec = androidx.compose.animation.core.tween(300),
+                                       initialOffsetY = { it / 4 }
+                                   ),
+                            exit = androidx.compose.animation.fadeOut(animationSpec = androidx.compose.animation.core.tween(200))
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                Spacer(modifier = Modifier.height(8.dp)) // Space for handle
+
+                                // Detailed Journey Information Card
+                                JourneyInformationCard(
+                                    journey = selectedJourney!!,
+                                    allStops = allStops
+                                )
+
+                                Spacer(modifier = Modifier.weight(1f))
+
+                                // Summary card at bottom
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = Color.White.copy(alpha = 0.95f)
+                                    ),
+                                    shape = RoundedCornerShape(12.dp),
+                                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+                                ) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        // Route chip(s)
+                                        AssistChip(
+                                            onClick = { },
+                                            label = {
+                                                Text(
+                                                    selectedJourney!!.route1Id,
+                                                    fontWeight = FontWeight.SemiBold
+                                                )
+                                            },
+                                            colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                                                containerColor = Color(0xFF007AFF),
+                                                labelColor = Color.White
+                                            )
+                                        )
+
+                                        if (selectedJourney!!.route2Id != null) {
+                                            Icon(
+                                                imageVector = Icons.Filled.ExpandMore,
+                                                contentDescription = null,
+                                                tint = Color.Gray,
+                                                modifier = Modifier.size(16.dp)
+                                            )
+                                            AssistChip(
+                                                onClick = { },
+                                                label = {
+                                                    Text(
+                                                        selectedJourney!!.route2Id!!,
+                                                        fontWeight = FontWeight.SemiBold
+                                                    )
+                                                },
+                                                colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
+                                                    containerColor = Color(0xFFFF9500),
+                                                    labelColor = Color.White
+                                                )
+                                            )
+                                        }
+
+                                        Spacer(modifier = Modifier.weight(1f))
+
+                                        Text(
+                                            "${selectedJourney!!.totalJourneyMinutes}' totali",
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF666666),
+                                            fontWeight = FontWeight.Medium
                                         )
                                     }
                                 }

@@ -377,7 +377,11 @@ fun JourneyResultsScreen(
     com.av.urbanway.presentation.components.JourneyResultsView(
         journeyData = journeyData,
         isLoading = isLoading,
-        onJourneySelect = onJourneySelect,
+        onJourneySelect = { journey ->
+            // Fetch trip details and set up map overlay
+            viewModel.showFixedJourneyOverlay(journey)
+            onJourneySelect(journey)
+        },
         onBack = onBack,
         modifier = Modifier.fillMaxSize()
     )

@@ -78,7 +78,13 @@ data class JourneyOption(
     @SerializedName("route2_start_stop_id") val route2StartStopId: Int? = null,
     @SerializedName("route2_end_stop_id") val route2EndStopId: Int? = null,
     @SerializedName("route1_headsign") val route1Headsign: String? = null,
-    @SerializedName("route2_headsign") val route2Headsign: String? = null
+    @SerializedName("route2_headsign") val route2Headsign: String? = null,
+    // Journey polyline coordinate data (matching iOS structure)
+    @SerializedName("shapes") val shapes: List<Map<String, Double>>? = null,
+    @SerializedName("shapes2") val shapes2: List<Map<String, Double>>? = null,
+    // Journey stop data for rendering pins
+    @SerializedName("stops") val stops: List<Map<String, Any>>? = null,
+    @SerializedName("stops2") val stops2: List<Map<String, Any>>? = null
 )
 
 data class Departure(

@@ -47,6 +47,7 @@ fun UrbanWayMapView(
     uiState: com.av.urbanway.data.models.UIState = com.av.urbanway.data.models.UIState.NORMAL,
     isSheetAnimating: Boolean = false,
     selectedPlace: com.av.urbanway.presentation.viewmodels.SelectedPlaceData? = null,
+    selectedJourney: com.av.urbanway.data.models.JourneyOption? = null,
     onMapReady: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -246,19 +247,19 @@ fun UrbanWayMapView(
                     LatLng(stop.stopLat, stop.stopLon)
                 }
             }
-            
+
             if (routePolylinePoints.size >= 2) {
                 com.google.maps.android.compose.Polyline(
                     points = routePolylinePoints,
                     color = ComposeColor(0xFF0B3D91), // Navy blue
                     width = 8f
                 )
-                
+
                 // Center on the closest stop with perfect zoom level 14
                 LaunchedEffect(routePolylinePoints, selectedStopId) {
                     // Small delay to avoid conflicts with other camera movements
                     kotlinx.coroutines.delay(300)
-                    
+
                     if (selectedStopId != null) {
                         // Find the selected stop position
                         val selectedStop = routeTripDetails?.stops?.find { it.stopId == selectedStopId }
@@ -276,6 +277,211 @@ fun UrbanWayMapView(
                                 android.util.Log.w("GoogleMapCompose", "Failed to center on selected stop: ${e.message}")
                             }
                         }
+                    }
+                }
+            }
+        }
+
+        // Journey polyline rendering with multi-segment support
+        if (uiState == com.av.urbanway.data.models.UIState.JOURNEY_VIEW && selectedJourney != null) {
+            android.util.Log.d("TRANSITOAPP", "🗺️ Rendering journey polylines")
+            android.util.Log.d("TRANSITOAPP", "🗺️ Journey shapes1 size: ${selectedJourney.shapes?.size}")
+            android.util.Log.d("TRANSITOAPP", "🗺️ Journey shapes2 size: ${selectedJourney.shapes2?.size}")
+
+            // Primary route polyline (blue)
+            selectedJourney.shapes?.let { shapes ->
+                val primaryPoints = remember(shapes) {
+                    shapes.mapNotNull { shape ->
+                        val lat = shape["lat"] as? Double
+                        val lon = shape["lon"] as? Double
+                        if (lat != null && lon != null &&
+                            lat >= -90.0 && lat <= 90.0 &&
+                            lon >= -180.0 && lon <= 180.0) {
+                            LatLng(lat, lon)
+                        } else {
+                            android.util.Log.w("TRANSITOAPP", "🗺️ Invalid coordinates: lat=$lat, lon=$lon")
+                            null
+                        }
+                    }
+                }
+
+                android.util.Log.d("TRANSITOAPP", "🗺️ Primary polyline points: ${primaryPoints.size}")
+
+                if (primaryPoints.size >= 2) {
+                    com.google.maps.android.compose.Polyline(
+                        points = primaryPoints,
+                        color = ComposeColor(0xFF007AFF), // iOS blue
+                        width = 8f, // More prominent
+                        pattern = null // Solid line
+                    )
+                    android.util.Log.d("TRANSITOAPP", "🗺️ Primary polyline rendered")
+                }
+            }
+
+            // Secondary route polyline (orange) for transfers
+            selectedJourney.shapes2?.let { shapes2 ->
+                val secondaryPoints = remember(shapes2) {
+                    shapes2.mapNotNull { shape ->
+                        val lat = shape["lat"] as? Double
+                        val lon = shape["lon"] as? Double
+                        if (lat != null && lon != null &&
+                            lat >= -90.0 && lat <= 90.0 &&
+                            lon >= -180.0 && lon <= 180.0) {
+                            LatLng(lat, lon)
+                        } else {
+                            android.util.Log.w("TRANSITOAPP", "🗺️ Invalid coordinates: lat=$lat, lon=$lon")
+                            null
+                        }
+                    }
+                }
+
+                android.util.Log.d("TRANSITOAPP", "🗺️ Secondary polyline points: ${secondaryPoints.size}")
+
+                if (secondaryPoints.size >= 2) {
+                    com.google.maps.android.compose.Polyline(
+                        points = secondaryPoints,
+                        color = ComposeColor(0xFFFF9500), // iOS orange
+                        width = 8f, // More prominent
+                        pattern = null // Solid line
+                    )
+                    android.util.Log.d("TRANSITOAPP", "🗺️ Secondary polyline rendered")
+                }
+            }
+
+            // Walking polylines in grey (iOS-style)
+            if (selectedJourney != null) {
+                android.util.Log.d("TRANSITOAPP", "🗺️ Adding walking polylines")
+
+                // Walking from current location to first transit stop
+                val firstStop = selectedJourney.shapes?.firstOrNull()
+                if (currentLocation != null && firstStop != null) {
+                    val lat = firstStop["lat"] as? Double
+                    val lon = firstStop["lon"] as? Double
+                    if (lat != null && lon != null) {
+                        val startPoint = LatLng(currentLocation.lat, currentLocation.lng)
+                        val transitPoint = LatLng(lat, lon)
+
+                        com.google.maps.android.compose.Polyline(
+                            points = listOf(startPoint, transitPoint),
+                            color = ComposeColor(0xFF8E8E93), // iOS systemGray
+                            width = 4f,
+                            pattern = listOf(
+                                com.google.android.gms.maps.model.Dash(8f),
+                                com.google.android.gms.maps.model.Gap(8f)
+                            )
+                        )
+                        android.util.Log.d("TRANSITOAPP", "🗺️ Rendered start walking segment")
+                    }
+                }
+
+                // Walking between route segments (for transfers)
+                if (selectedJourney.isDirect == 0) {
+                    val lastStop1 = selectedJourney.shapes?.lastOrNull()
+                    val firstStop2 = selectedJourney.shapes2?.firstOrNull()
+
+                    if (lastStop1 != null && firstStop2 != null) {
+                        val lat1 = lastStop1["lat"] as? Double
+                        val lon1 = lastStop1["lon"] as? Double
+                        val lat2 = firstStop2["lat"] as? Double
+                        val lon2 = firstStop2["lon"] as? Double
+
+                        if (lat1 != null && lon1 != null && lat2 != null && lon2 != null) {
+                            val point1 = LatLng(lat1, lon1)
+                            val point2 = LatLng(lat2, lon2)
+
+                            com.google.maps.android.compose.Polyline(
+                                points = listOf(point1, point2),
+                                color = ComposeColor(0xFF8E8E93), // iOS systemGray
+                                width = 4f,
+                                pattern = listOf(
+                                    com.google.android.gms.maps.model.Dash(8f),
+                                    com.google.android.gms.maps.model.Gap(8f)
+                                )
+                            )
+                            android.util.Log.d("TRANSITOAPP", "🗺️ Rendered transfer walking segment")
+                        }
+                    }
+                }
+            }
+
+            // Journey stop pins as small circles (matching iOS)
+            selectedJourney.stops?.let { stops ->
+                android.util.Log.d("TRANSITOAPP", "🗺️ Rendering primary route stops: ${stops.size}")
+                stops.forEach { stopData ->
+                    val stopLat = stopData["stopLat"] as? Double
+                    val stopLon = stopData["stopLon"] as? Double
+                    val stopId = stopData["stopId"] as? String
+                    val stopName = stopData["stopName"] as? String
+
+                    if (stopLat != null && stopLon != null) {
+                        com.google.maps.android.compose.Circle(
+                            center = LatLng(stopLat, stopLon),
+                            radius = 25.0, // Half smaller radius in meters
+                            fillColor = ComposeColor(0xFFFFFFFF), // White fill
+                            strokeColor = ComposeColor(0xFF007AFF), // Blue border (primary route color)
+                            strokeWidth = 2f, // Thinner stroke for smaller circles
+                            clickable = false
+                        )
+                    }
+                }
+            }
+
+            // Secondary route stop pins for transfers
+            selectedJourney.stops2?.let { stops2 ->
+                android.util.Log.d("TRANSITOAPP", "🗺️ Rendering secondary route stops: ${stops2.size}")
+                stops2.forEach { stopData ->
+                    val stopLat = stopData["stopLat"] as? Double
+                    val stopLon = stopData["stopLon"] as? Double
+                    val stopId = stopData["stopId"] as? String
+                    val stopName = stopData["stopName"] as? String
+
+                    if (stopLat != null && stopLon != null) {
+                        com.google.maps.android.compose.Circle(
+                            center = LatLng(stopLat, stopLon),
+                            radius = 25.0, // Half smaller radius in meters
+                            fillColor = ComposeColor(0xFFFFFFFF), // White fill
+                            strokeColor = ComposeColor(0xFFFF9500), // Orange border (secondary route color)
+                            strokeWidth = 2f, // Thinner stroke for smaller circles
+                            clickable = false
+                        )
+                    }
+                }
+            }
+
+            // Auto-fit camera to journey bounds
+            LaunchedEffect(selectedJourney) {
+                kotlinx.coroutines.delay(500) // Wait for polylines to render
+
+                val allPoints = mutableListOf<LatLng>()
+
+                // Add primary route points
+                selectedJourney.shapes?.mapNotNull { shape ->
+                    val lat = shape["lat"] as? Double
+                    val lon = shape["lon"] as? Double
+                    if (lat != null && lon != null) LatLng(lat, lon) else null
+                }?.let { allPoints.addAll(it) }
+
+                // Add secondary route points
+                selectedJourney.shapes2?.mapNotNull { shape ->
+                    val lat = shape["lat"] as? Double
+                    val lon = shape["lon"] as? Double
+                    if (lat != null && lon != null) LatLng(lat, lon) else null
+                }?.let { allPoints.addAll(it) }
+
+                android.util.Log.d("TRANSITOAPP", "🗺️ Auto-fitting camera to ${allPoints.size} points")
+
+                if (allPoints.size >= 2) {
+                    val boundsBuilder = LatLngBounds.Builder()
+                    allPoints.forEach { boundsBuilder.include(it) }
+                    val bounds = boundsBuilder.build()
+
+                    try {
+                        cameraPositionState.animate(
+                            CameraUpdateFactory.newLatLngBounds(bounds, 100)
+                        )
+                        android.util.Log.d("TRANSITOAPP", "🗺️ Camera fitted to journey bounds")
+                    } catch (e: Exception) {
+                        android.util.Log.e("TRANSITOAPP", "🗺️ Failed to fit journey bounds: ${e.message}")
                     }
                 }
             }
@@ -331,7 +537,8 @@ fun UrbanWayMapView(
             CircularProgressIndicator()
         }
     }
-    }
+}
+
 
     
     // Update camera when location changes
