@@ -219,74 +219,13 @@ fun DraggableBottomSheet(
                                 // Detailed Journey Information Card
                                 JourneyInformationCard(
                                     journey = selectedJourney!!,
-                                    allStops = allStops
+                                    allStops = allStops,
+                                    onBack = {
+                                        viewModel.clearSelectedJourney()
+                                    }
                                 )
 
                                 Spacer(modifier = Modifier.weight(1f))
-
-                                // Summary card at bottom
-                                Card(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = Color.White.copy(alpha = 0.95f)
-                                    ),
-                                    shape = RoundedCornerShape(12.dp),
-                                    elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
-                                ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Route chip(s)
-                                        AssistChip(
-                                            onClick = { },
-                                            label = {
-                                                Text(
-                                                    selectedJourney!!.route1Id,
-                                                    fontWeight = FontWeight.SemiBold
-                                                )
-                                            },
-                                            colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-                                                containerColor = Color(0xFF007AFF),
-                                                labelColor = Color.White
-                                            )
-                                        )
-
-                                        if (selectedJourney!!.route2Id != null) {
-                                            Icon(
-                                                imageVector = Icons.Filled.ExpandMore,
-                                                contentDescription = null,
-                                                tint = Color.Gray,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-                                            AssistChip(
-                                                onClick = { },
-                                                label = {
-                                                    Text(
-                                                        selectedJourney!!.route2Id!!,
-                                                        fontWeight = FontWeight.SemiBold
-                                                    )
-                                                },
-                                                colors = androidx.compose.material3.AssistChipDefaults.assistChipColors(
-                                                    containerColor = Color(0xFFFF9500),
-                                                    labelColor = Color.White
-                                                )
-                                            )
-                                        }
-
-                                        Spacer(modifier = Modifier.weight(1f))
-
-                                        Text(
-                                            "${selectedJourney!!.totalJourneyMinutes}' totali",
-                                            style = MaterialTheme.typography.bodyMedium,
-                                            color = Color(0xFF666666),
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
                             }
                         }
                     } else {

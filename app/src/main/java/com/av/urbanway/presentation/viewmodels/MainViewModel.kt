@@ -192,7 +192,7 @@ class MainViewModel(
     // UI State - clean enum-based approach
     private val _uiState = MutableStateFlow(UIState.NORMAL)
     val uiState: StateFlow<UIState> = _uiState.asStateFlow()
-    
+
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
     
@@ -222,11 +222,15 @@ class MainViewModel(
     private val _showingJourneyPlanner = MutableStateFlow(false)
     val showingJourneyPlanner: StateFlow<Boolean> = _showingJourneyPlanner.asStateFlow()
 
+    // Flag to prevent auto-navigation to journey planner when user cancels
+    private val _allowJourneyAutoNavigation = MutableStateFlow(true)
+    val allowJourneyAutoNavigation: StateFlow<Boolean> = _allowJourneyAutoNavigation.asStateFlow()
+
     
     // Legacy support - computed properties for backward compatibility
     val isSearchActive: Boolean
         get() = when (_uiState.value) {
-            UIState.NORMAL, UIState.ROUTE_DETAIL, UIState.JOURNEY_VIEW -> false
+            UIState.NORMAL, UIState.ACCEPTMAPPLACE, UIState.ROUTE_DETAIL, UIState.JOURNEY_VIEW, UIState.JOURNEY_RESULTS -> false
             UIState.SEARCHING, UIState.JOURNEY_PLANNING, UIState.EDITING_JOURNEY_FROM, UIState.EDITING_JOURNEY_TO -> true
         }
     
@@ -454,6 +458,14 @@ class MainViewModel(
         setupSearchBindings()
         updateToolbarForCurrentContext()
         updateBottomSheetVisibility()
+
+        // Add logging for UI state changes
+        viewModelScope.launch {
+            _uiState.collect { newState ->
+                android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 UI STATE CHANGED: $newState")
+                android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 Stack trace: ${Thread.currentThread().stackTrace.take(6).joinToString("\n") { "  $it" }}")
+            }
+        }
     }
 
     private fun updateToolbarForCurrentContext() { /* no-op for now */ }
@@ -462,11 +474,16 @@ class MainViewModel(
 
     // MARK: - Journey helpers (current location)
     fun setStartToCurrentLocation() {
+        android.util.Log.d("TRANSITOAPP", "🔄 setStartToCurrentLocation() called - Stack trace:")
+        android.util.Log.d("TRANSITOAPP", Thread.currentThread().stackTrace.joinToString("\n") { "  at $it" })
         viewModelScope.launch {
             val resolvedLocation = locationManager.getCurrentLocation()
             if (resolvedLocation != null) {
+                android.util.Log.d("TRANSITOAPP", "🔄 Setting startLocation to current location: ${resolvedLocation.address}")
                 _startLocation.value = resolvedLocation
-                _uiState.value = UIState.JOURNEY_PLANNING
+                _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
+            } else {
+                android.util.Log.d("TRANSITOAPP", "🔄 Current location is null, not setting startLocation")
             }
         }
     }
@@ -476,7 +493,7 @@ class MainViewModel(
             val resolvedLocation = locationManager.getCurrentLocation()
             if (resolvedLocation != null) {
                 _endLocation.value = resolvedLocation
-                _uiState.value = UIState.JOURNEY_PLANNING
+                _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
                 if (_startLocation.value == null) {
                     _requestSearchFocus.value = true
                 }
@@ -490,6 +507,7 @@ class MainViewModel(
             address = place.name, // Use place name as address
             coordinates = place.coordinates
         )
+        _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
         // Set start location to current location if not already set
         if (_startLocation.value == null) {
             setStartToCurrentLocation()
@@ -500,13 +518,14 @@ class MainViewModel(
     
     // MARK: - Manual journey location setters
     fun setStartLocation(location: Location) {
+        android.util.Log.d("TRANSITOAPP", "🔄 setStartLocation() called with: ${location.address}")
         _startLocation.value = location
-        _uiState.value = UIState.JOURNEY_PLANNING
+        _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
     }
     
     fun setEndLocation(location: Location) {
         _endLocation.value = location
-        _uiState.value = UIState.JOURNEY_PLANNING
+        _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
     }
     
     fun startJourneyToSelectedPlace() {
@@ -526,15 +545,21 @@ class MainViewModel(
         
         // Set user's current location as the default starting point
         val currentLoc = _currentLocation.value
+        android.util.Log.d("TRANSITOAPP", "🔄 startJourneyToSelectedPlace() setting start location")
         if (currentLoc != null) {
+            android.util.Log.d("TRANSITOAPP", "🔄 Setting startLocation to current location in startJourneyToSelectedPlace: ${currentLoc.address}")
             _startLocation.value = currentLoc
         } else {
+            android.util.Log.d("TRANSITOAPP", "🔄 Setting startLocation to null in startJourneyToSelectedPlace")
             _startLocation.value = null
         }
         
         // Hide bottom sheet
         _showBottomSheet.value = false
-        
+
+        // Re-enable auto-navigation for journey planning
+        _allowJourneyAutoNavigation.value = true
+
         // Show journey planning state - transition to journey planner
         _uiState.value = UIState.JOURNEY_PLANNING
         _requestSearchFocus.value = false // Don't auto-focus search
@@ -806,15 +831,21 @@ class MainViewModel(
     }
 
     // MARK: - Search Methods (Android-like)
-    fun openSearch() { 
+    fun openSearch() {
+        android.util.Log.d("TRANSITOAPP", "🔄 openSearch() called - changing state from ${_uiState.value} to SEARCHING")
+        android.util.Log.d("TRANSITOAPP", "🔄 Stack trace: ${Thread.currentThread().stackTrace.take(5).joinToString("\n") { "  $it" }}")
         _uiState.value = UIState.SEARCHING
     }
     
     fun closeSearch() {
-        _uiState.value = UIState.NORMAL
+        // Don't reset UI state if we're editing journey fields - let the selection handler manage the state
+        if (_uiState.value != UIState.EDITING_JOURNEY_FROM && _uiState.value != UIState.EDITING_JOURNEY_TO) {
+            _uiState.value = UIState.NORMAL
+        }
         _searchQuery.value = ""
         placesService.stopAutocomplete()
         _searchResults.value = emptyList()
+        android.util.Log.d("TRANSITOAPP", "🔄 closeSearch() called, UI state preserved: ${_uiState.value}")
     }
     
     fun clearSelectedPlace() {
@@ -845,6 +876,8 @@ class MainViewModel(
     ) {
         _startLocation.value = Location(fromAddress, fromCoordinates)
         _endLocation.value = Location(toAddress, toCoordinates)
+        _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
+        _uiState.value = UIState.JOURNEY_RESULTS // Show journey results card
         
         viewModelScope.launch {
             _isLoadingJourneys.value = true
@@ -1091,11 +1124,24 @@ class MainViewModel(
         }
     }
 
-    fun clearSelectedJourney() {
+    fun clearSelectedJourney(updateState: Boolean = true) {
         android.util.Log.d("TRANSITOAPP", "📍 Clearing selected journey")
         _selectedJourney.value = null
-        _uiState.value = UIState.NORMAL
-        android.util.Log.d("TRANSITOAPP", "📍 UI state reset to NORMAL")
+
+        if (updateState) {
+            // If we're coming from journey view, return to journey results
+            // Otherwise, return to normal state
+            val targetState = if (_uiState.value == UIState.JOURNEY_VIEW) {
+                UIState.JOURNEY_RESULTS
+            } else {
+                UIState.NORMAL
+            }
+
+            _uiState.value = targetState
+            android.util.Log.d("TRANSITOAPP", "📍 UI state reset to $targetState")
+        } else {
+            android.util.Log.d("TRANSITOAPP", "📍 Journey cleared without state change")
+        }
         // Note: Don't collapse bottom sheet here - let user do it with FAB
     }
 
@@ -1131,57 +1177,155 @@ class MainViewModel(
 
     fun selectSearchResult(result: SearchResult) {
         android.util.Log.d("TRANSITOAPP", "MainViewModel - selectSearchResult called with: ${result.title}")
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - current UI state: ${_uiState.value}")
         when (result.type) {
             SearchResultType.ADDRESS, SearchResultType.PLACE -> {
                 if (result.coordinates != null) {
                     // Direct coordinates available
                     android.util.Log.d("TRANSITOAPP", "MainViewModel - using direct coordinates")
-                    
-                    // Directly set as destination and prepare for journey planner
-                    android.util.Log.d("TRANSITOAPP", "MainViewModel - setting as destination and preparing journey planner")
-                    
-                    // Set as end location for journey planner
-                    _endLocation.value = Location(
-                        address = result.title,
-                        coordinates = result.coordinates
-                    )
-                    
-                    // Set start location to current location if not already set
-                    if (_startLocation.value == null) {
-                        setStartToCurrentLocation()
+
+                    // Check if we're editing a journey field
+                    when (_uiState.value) {
+                        UIState.EDITING_JOURNEY_FROM -> {
+                            android.util.Log.d("TRANSITOAPP", "🔄 MainViewModel - setting FROM location to: ${result.title}")
+                            android.util.Log.d("TRANSITOAPP", "🔄 Before setting - startLocation: ${_startLocation.value?.address}")
+                            _startLocation.value = Location(
+                                address = result.title,
+                                coordinates = result.coordinates
+                            )
+                            _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
+                            android.util.Log.d("TRANSITOAPP", "🔄 After setting - startLocation: ${_startLocation.value?.address}")
+
+                            // Add a small delay to check if the location gets overridden
+                            viewModelScope.launch {
+                                kotlinx.coroutines.delay(100)
+                                android.util.Log.d("TRANSITOAPP", "🔄 After 100ms delay - startLocation: ${_startLocation.value?.address}")
+                                kotlinx.coroutines.delay(500)
+                                android.util.Log.d("TRANSITOAPP", "🔄 After 600ms delay - startLocation: ${_startLocation.value?.address}")
+                            }
+
+                            android.util.Log.d("TRANSITOAPP", "🔄 Transitioning to JOURNEY_PLANNING state")
+                            _uiState.value = UIState.JOURNEY_PLANNING
+                            closeSearch()
+                            _toastMessage.value = "Partenza selezionata: ${result.title}"
+                            android.util.Log.d("TRANSITOAPP", "🔄 Final check - startLocation: ${_startLocation.value?.address}")
+                        }
+                        UIState.EDITING_JOURNEY_TO -> {
+                            android.util.Log.d("TRANSITOAPP", "MainViewModel - setting TO location")
+                            _endLocation.value = Location(
+                                address = result.title,
+                                coordinates = result.coordinates
+                            )
+                            _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
+                            _uiState.value = UIState.JOURNEY_PLANNING
+                            closeSearch()
+                            _toastMessage.value = "Destinazione selezionata: ${result.title}"
+                        }
+                        else -> {
+                            // Default behavior - this should only happen in normal search mode
+                            // Journey field editing is handled in the cases above
+                            android.util.Log.d("TRANSITOAPP", "MainViewModel - normal search mode, showing selected place on map")
+                            android.util.Log.d("TRANSITOAPP", "MainViewModel - allowJourneyAutoNavigation: ${_allowJourneyAutoNavigation.value}")
+
+                            // Set selected place data for map pin
+                            _selectedPlace.value = SelectedPlaceData(
+                                name = result.title,
+                                description = result.subtitle ?: "",
+                                coordinates = result.coordinates!!
+                            )
+
+                            // Check if we should auto-navigate to journey planning (only in normal search mode)
+                            if (_allowJourneyAutoNavigation.value) {
+                                android.util.Log.d("TRANSITOAPP", "MainViewModel - auto-navigating to journey planning")
+                                // Auto-navigate to journey planning (like first time search)
+                                startJourneyToSelectedPlace()
+                            } else {
+                                android.util.Log.d("TRANSITOAPP", "MainViewModel - showing route/walk toolbar")
+                                // Set state to accept map place (shows route/walk toolbar)
+                                _uiState.value = UIState.ACCEPTMAPPLACE
+
+                                // Close search and show bottom sheet
+                                closeSearch()
+                                _showBottomSheet.value = true
+                                _isBottomSheetExpanded.value = true
+
+                                // Show confirmation
+                                _toastMessage.value = "Luogo selezionato: ${result.title}"
+                            }
+                        }
                     }
-                    
-                    // Close search and hide bottom sheet
-                    closeSearch()
-                    _showBottomSheet.value = false
-                    
-                    // Show confirmation
-                    _toastMessage.value = "Destinazione selezionata: ${result.title}"
                 } else if (result.placeId != null) {
                     // Need to fetch place details
                     android.util.Log.d("TRANSITOAPP", "MainViewModel - fetching place details for placeId: ${result.placeId}")
+                    android.util.Log.d("TRANSITOAPP", "🔄 Current UI state before place details fetch: ${_uiState.value}")
                     viewModelScope.launch {
                         val placeDetailsResult = placesService.getPlaceDetails(result.placeId)
                         placeDetailsResult.fold(
                             onSuccess = { placeDetails ->
                                 android.util.Log.d("TRANSITOAPP", "MainViewModel - place details fetched successfully: ${placeDetails.name}")
-                                
-                                // Set selected place data for map pin
-                                _selectedPlace.value = SelectedPlaceData(
-                                    name = placeDetails.name,
-                                    description = placeDetails.address ?: "",
-                                    coordinates = placeDetails.coordinates
-                                )
-                                
-                                // Close search first
-                                closeSearch()
-                                android.util.Log.d("TRANSITOAPP", "MainViewModel - showing bottom sheet for selected place")
-                                // Ensure sheet is visible and expanded for selected place
-                                _showBottomSheet.value = true
-                                _isBottomSheetExpanded.value = true
-                                
-                                // Show confirmation
-                                _toastMessage.value = "Destinazione selezionata: ${placeDetails.name}"
+                                android.util.Log.d("TRANSITOAPP", "🔄 Current UI state when handling place details: ${_uiState.value}")
+
+                                // Check if we're editing a journey field
+                                when (_uiState.value) {
+                                    UIState.EDITING_JOURNEY_FROM -> {
+                                        android.util.Log.d("TRANSITOAPP", "🔄 MainViewModel - setting FROM location from place details: ${placeDetails.name}")
+                                        android.util.Log.d("TRANSITOAPP", "🔄 Before setting - startLocation: ${_startLocation.value?.address}")
+                                        _startLocation.value = Location(
+                                            address = placeDetails.name,
+                                            coordinates = placeDetails.coordinates
+                                        )
+                                        android.util.Log.d("TRANSITOAPP", "🔄 After setting - startLocation: ${_startLocation.value?.address}")
+                                        android.util.Log.d("TRANSITOAPP", "🔄 Transitioning to JOURNEY_PLANNING state")
+                                        _uiState.value = UIState.JOURNEY_PLANNING
+                                        closeSearch()
+                                        _toastMessage.value = "Partenza selezionata: ${placeDetails.name}"
+                                        android.util.Log.d("TRANSITOAPP", "🔄 Final check - startLocation: ${_startLocation.value?.address}")
+                                    }
+                                    UIState.EDITING_JOURNEY_TO -> {
+                                        android.util.Log.d("TRANSITOAPP", "MainViewModel - setting TO location from place details")
+                                        _endLocation.value = Location(
+                                            address = placeDetails.name,
+                                            coordinates = placeDetails.coordinates
+                                        )
+                                        _allowJourneyAutoNavigation.value = true // Re-enable auto-navigation
+                                        _uiState.value = UIState.JOURNEY_PLANNING
+                                        closeSearch()
+                                        _toastMessage.value = "Destinazione selezionata: ${placeDetails.name}"
+                                    }
+                                    else -> {
+                                        // Default behavior - this should only happen in normal search mode
+                                        // Journey field editing is handled in the cases above
+                                        android.util.Log.d("TRANSITOAPP", "MainViewModel - normal search mode from place details, allowJourneyAutoNavigation: ${_allowJourneyAutoNavigation.value}")
+
+                                        // Set selected place data for map pin
+                                        _selectedPlace.value = SelectedPlaceData(
+                                            name = placeDetails.name,
+                                            description = placeDetails.address ?: "",
+                                            coordinates = placeDetails.coordinates
+                                        )
+
+                                        // Check if we should auto-navigate to journey planning (only in normal search mode)
+                                        if (_allowJourneyAutoNavigation.value) {
+                                            android.util.Log.d("TRANSITOAPP", "MainViewModel - auto-navigating to journey planning from place details")
+                                            // Auto-navigate to journey planning (like first time search)
+                                            startJourneyToSelectedPlace()
+                                        } else {
+                                            android.util.Log.d("TRANSITOAPP", "MainViewModel - showing route/walk toolbar from place details")
+                                            // Set state to accept map place (shows route/walk toolbar)
+                                            _uiState.value = UIState.ACCEPTMAPPLACE
+
+                                            // Close search first
+                                            closeSearch()
+                                            android.util.Log.d("TRANSITOAPP", "MainViewModel - showing bottom sheet for selected place")
+                                            // Ensure sheet is visible and expanded for selected place
+                                            _showBottomSheet.value = true
+                                            _isBottomSheetExpanded.value = true
+
+                                            // Show confirmation
+                                            _toastMessage.value = "Destinazione selezionata: ${placeDetails.name}"
+                                        }
+                                    }
+                                }
                             },
                             onFailure = { error ->
                                 android.util.Log.e("TRANSITOAPP", "MainViewModel - failed to fetch place details: ${error.message}")
@@ -1242,6 +1386,49 @@ class MainViewModel(
 
     fun clearToast() {
         _toastMessage.value = null
+    }
+
+    // MARK: - Journey Field Editing Functions
+    fun startEditingJourneyFrom() {
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 startEditingJourneyFrom() called - Stack trace:")
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: ${Thread.currentThread().stackTrace.take(8).joinToString("\n") { "  at $it" }}")
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 Current UI state before change: ${_uiState.value}")
+        _uiState.value = UIState.EDITING_JOURNEY_FROM
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 UI state set to: ${_uiState.value}")
+        _searchQuery.value = ""
+        _searchCategory.value = "address"
+        _searchResults.value = emptyList()
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔄 Search initialized for journey FROM editing")
+    }
+
+    fun startEditingJourneyTo() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - Starting editing journey TO field")
+        _uiState.value = UIState.EDITING_JOURNEY_TO
+        _searchQuery.value = ""
+        _searchCategory.value = "address"
+        _searchResults.value = emptyList()
+        android.util.Log.d("TRANSITOAPP", "🔄 Search initialized for journey TO editing")
+    }
+
+    fun cancelJourneyPlanning() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - Canceling journey planning")
+        // Disable auto-navigation first to prevent race condition
+        _allowJourneyAutoNavigation.value = false
+        _uiState.value = UIState.NORMAL
+        closeSearch()
+        _showBottomSheet.value = true // Show bottom sheet to return to initial state
+        _isBottomSheetExpanded.value = false // Collapse sheet to show route arrivals
+        clearSelectedJourney(updateState = false) // Don't let it change state
+        // Clear journey locations AND selected place
+        _startLocation.value = null
+        _endLocation.value = null
+        _selectedPlace.value = null // Clear selected place to hide route/walk toolbar
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - Disabled auto-navigation, collapsed sheet, cleared all data")
+    }
+
+    fun backToJourneyPlanner() {
+        android.util.Log.d("TRANSITOAPP", "MainViewModel - Going back to journey planner")
+        _uiState.value = UIState.JOURNEY_PLANNING
     }
 
     // MARK: - Stops persistence hooks

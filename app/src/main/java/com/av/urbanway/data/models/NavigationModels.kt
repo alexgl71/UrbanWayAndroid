@@ -4,7 +4,9 @@ package com.av.urbanway.data.models
 enum class UIState {
     NORMAL,
     SEARCHING,
+    ACCEPTMAPPLACE,
     JOURNEY_PLANNING,
+    JOURNEY_RESULTS,
     EDITING_JOURNEY_FROM,
     EDITING_JOURNEY_TO,
     ROUTE_DETAIL,

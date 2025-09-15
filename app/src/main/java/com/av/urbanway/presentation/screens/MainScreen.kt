@@ -71,7 +71,8 @@ fun MainScreen() {
     val selectedPlace by viewModel.selectedPlace.collectAsState()
     val startLocation by viewModel.startLocation.collectAsState()
     val endLocation by viewModel.endLocation.collectAsState()
-    
+    val allowJourneyAutoNavigation by viewModel.allowJourneyAutoNavigation.collectAsState()
+
     var hasLocationPermission by remember { mutableStateOf(locationManager.hasLocationPermission()) }
     var showLocationPermissionRequest by remember { mutableStateOf(!hasLocationPermission) }
     var showLocationAlert by remember { mutableStateOf(false) }
@@ -104,13 +105,7 @@ fun MainScreen() {
         viewModel.bootstrapStopsIfNeeded(context)
     }
     
-    // Navigate to Journey Planner when both start and end locations are set
-    LaunchedEffect(startLocation, endLocation) {
-        if (startLocation != null && endLocation != null && uiState != UIState.SEARCHING) {
-            // Both locations are set, navigate to Journey Planner
-            navController.navigate(Screen.JourneyPlanner.route)
-        }
-    }
+    // Auto-navigation removed - using card-based UI like iOS
 
     Box(
         modifier = Modifier
@@ -120,7 +115,7 @@ fun MainScreen() {
     ) {
         // Conditional content based on UI state
         when (uiState) {
-            UIState.SEARCHING -> {
+            UIState.SEARCHING, UIState.EDITING_JOURNEY_FROM, UIState.EDITING_JOURNEY_TO -> {
                 SearchScreen(
                     viewModel = viewModel,
                     modifier = Modifier.fillMaxSize()
@@ -208,8 +203,8 @@ fun MainScreen() {
             }
         }
 
-        // Draggable Bottom Sheet (conditionally visible - not in SEARCHING state)
-        if (showBottomSheet && uiState != UIState.SEARCHING) {
+        // Draggable Bottom Sheet (conditionally visible - not in search states)
+        if (showBottomSheet && uiState != UIState.SEARCHING && uiState != UIState.EDITING_JOURNEY_FROM && uiState != UIState.EDITING_JOURNEY_TO) {
             DraggableBottomSheet(
                 viewModel = viewModel,
                 onSearchOpen = {
@@ -220,8 +215,8 @@ fun MainScreen() {
         }
 
 
-        // iOS-style FAB with animations (chevron ↔ X) - not in SEARCHING state
-        if (showBottomSheet && uiState != UIState.SEARCHING) {
+        // iOS-style FAB with animations (chevron ↔ X) - not in search states
+        if (showBottomSheet && uiState != UIState.SEARCHING && uiState != UIState.EDITING_JOURNEY_FROM && uiState != UIState.EDITING_JOURNEY_TO) {
             val fabSize = 56.dp
             val haptics = LocalHapticFeedback.current
             
@@ -306,7 +301,7 @@ fun MainScreen() {
         }
         
         // iOS-style place selection toolbar - shown when place is selected (matches iOS DraggableBottomSheet)
-        val showPlaceSelectionToolbar = selectedPlace != null && uiState != UIState.SEARCHING
+        val showPlaceSelectionToolbar = selectedPlace != null && uiState != UIState.SEARCHING && uiState != UIState.EDITING_JOURNEY_FROM && uiState != UIState.EDITING_JOURNEY_TO
         if (showPlaceSelectionToolbar) {
             Box(
                 modifier = Modifier
@@ -320,9 +315,9 @@ fun MainScreen() {
                             icon = Icons.Filled.Route,
                             contentDescription = "Percorso",
                             onClick = {
-                                android.util.Log.d("TRANSITOAPP", "Starting journey to selected place")
+                                android.util.Log.d("TRANSITOAPP", "Showing journey planner card")
                                 viewModel.startJourneyToSelectedPlace()
-                                navController.navigate(Screen.JourneyPlanner.route)
+                                android.util.Log.d("TRANSITOAPP", "Journey planner card shown")
                             }
                         )
                     ),
@@ -339,6 +334,32 @@ fun MainScreen() {
                     )
                 )
             }
+        }
+
+        // Journey Planner Card - slides up when UIState.JOURNEY_PLANNING
+        if (uiState == UIState.JOURNEY_PLANNING) {
+            JourneyPlannerScreen(
+                viewModel = viewModel,
+                currentLocation = currentLocation,
+                onSearchJourney = { fromAddress, fromCoords, toAddress, toCoords ->
+                    viewModel.startJourneySearch(fromAddress, fromCoords, toAddress, toCoords)
+                },
+                onBack = { /* No navigation - handled by viewModel.cancelJourneyPlanning() */ }
+            )
+        }
+
+        // Journey Results Card - slides up when UIState.JOURNEY_RESULTS
+        if (uiState == UIState.JOURNEY_RESULTS) {
+            JourneyResultsScreen(
+                viewModel = viewModel,
+                onJourneySelect = { journey ->
+                    viewModel.showFixedJourneyOverlay(journey)
+                },
+                onBack = {
+                    // Go back to journey planner
+                    viewModel.backToJourneyPlanner()
+                }
+            )
         }
 
         // Global Toast Overlay

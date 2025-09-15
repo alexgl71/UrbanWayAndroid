@@ -167,7 +167,11 @@ fun JourneyPlannerScreen(
                 fontWeight = FontWeight.SemiBold
             )
             
-            TextButton(onClick = onBack) {
+            TextButton(onClick = {
+                android.util.Log.d("TRANSITOAPP", "🔄 Annulla button clicked - hiding journey planner card")
+                viewModel.cancelJourneyPlanning()
+                android.util.Log.d("TRANSITOAPP", "🔄 Journey planner card hidden")
+            }) {
                 Text(
                     text = "Annulla",
                     color = Color.White,
@@ -203,8 +207,8 @@ fun JourneyPlannerScreen(
                     )
                     
                     Button(
-                        onClick = { 
-                            viewModel.setStartToCurrentLocation() 
+                        onClick = {
+                            viewModel.startEditingJourneyFrom()
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
@@ -221,9 +225,9 @@ fun JourneyPlannerScreen(
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Text(
-                                text = startLocation?.address ?: "VIA GIOVANNI CARLO CAVALLI, 38",
+                                text = startLocation?.address ?: "Tocca per selezionare partenza",
                                 style = MaterialTheme.typography.bodyMedium,
-                                color = Color.Black,
+                                color = if (startLocation?.address != null) Color.Black else Color.Gray,
                                 modifier = Modifier.weight(1f),
                                 maxLines = 2
                             )
@@ -260,9 +264,8 @@ fun JourneyPlannerScreen(
                     )
                     
                     Button(
-                        onClick = { 
-                            // Handle "Cambia" button for destination
-                            viewModel.showToast("Cambia destinazione - Feature in development")
+                        onClick = {
+                            viewModel.startEditingJourneyTo()
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
@@ -382,7 +385,10 @@ fun JourneyResultsScreen(
             viewModel.showFixedJourneyOverlay(journey)
             onJourneySelect(journey)
         },
-        onBack = onBack,
+        onBack = {
+            viewModel.cancelJourneyPlanning()
+            onBack()
+        },
         modifier = Modifier.fillMaxSize()
     )
 }

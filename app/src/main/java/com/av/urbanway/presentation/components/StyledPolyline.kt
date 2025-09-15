@@ -14,7 +14,7 @@ data class StyledPolyline(
     val points: List<LatLng>,
     val strokeColor: Color,
     val isPast: Boolean = false,
-    val lineWidth: Float = if (isPast) 2f else 3f,
+    val lineWidth: Float = if (isPast) 6f else 12f,
     val id: String = "${points.hashCode()}_${strokeColor.value}_$isPast"
 ) {
     /**

@@ -168,7 +168,7 @@ fun makeSelectedRouteStopMarkerDescriptor(density: Density, size: Dp = 22.dp): B
     val sizePx = if (requestedPx <= 0) 44 else requestedPx
     val red = ComposeColor(0xFFE53935).toArgb() // Red for selected stop
     val white = ComposeColor.White.toArgb()
-    
+
     return runCatching {
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val c = AndroidCanvas(bmp)
@@ -192,6 +192,109 @@ fun makeSelectedRouteStopMarkerDescriptor(density: Density, size: Dp = 22.dp): B
         BitmapDescriptorFactory.fromBitmap(bmp)
     }.getOrElse {
         // Fallback to default marker
+        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
+    }
+}
+
+fun makeStartMarkerDescriptor(density: Density, size: Dp = 28.dp): BitmapDescriptor {
+    val requestedPx = with(density) { size.roundToPx() }
+    val sizePx = if (requestedPx <= 0) 56 else requestedPx
+    val green = ComposeColor(0xFF34C759).toArgb() // iOS systemGreen
+    val white = ComposeColor.White.toArgb()
+    val darkGreen = ComposeColor(0xFF28A745).toArgb()
+
+    return runCatching {
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        val cx = sizePx / 2f
+        val cy = sizePx / 2f
+        val radius = sizePx / 2f
+
+        // White outer glow/shadow
+        paint.style = Paint.Style.FILL
+        paint.color = ComposeColor.White.copy(alpha = 0.3f).toArgb()
+        c.drawCircle(cx, cy, radius, paint)
+
+        // Green filled circle (slightly smaller)
+        paint.color = green
+        c.drawCircle(cx, cy, radius * 0.85f, paint)
+
+        // Darker green border
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = max(2f, sizePx * 0.06f)
+        paint.color = darkGreen
+        c.drawCircle(cx, cy, radius * 0.85f - paint.strokeWidth / 2f, paint)
+
+        // Play icon (triangle pointing right) instead of "S"
+        paint.style = Paint.Style.FILL
+        paint.color = white
+        val iconSize = sizePx * 0.3f
+        val triangleOffset = iconSize * 0.1f // Slight offset to center visually
+
+        // Triangle points
+        val path = android.graphics.Path()
+        path.moveTo(cx - iconSize/2 + triangleOffset, cy - iconSize/2) // Top left
+        path.lineTo(cx + iconSize/2 + triangleOffset, cy) // Right center
+        path.lineTo(cx - iconSize/2 + triangleOffset, cy + iconSize/2) // Bottom left
+        path.close()
+
+        c.drawPath(path, paint)
+
+        BitmapDescriptorFactory.fromBitmap(bmp)
+    }.getOrElse {
+        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_GREEN)
+    }
+}
+
+fun makeEndMarkerDescriptor(density: Density, size: Dp = 28.dp): BitmapDescriptor {
+    val requestedPx = with(density) { size.roundToPx() }
+    val sizePx = if (requestedPx <= 0) 56 else requestedPx
+    val red = ComposeColor(0xFFFF3B30).toArgb() // iOS systemRed
+    val white = ComposeColor.White.toArgb()
+    val darkRed = ComposeColor(0xFFDC3545).toArgb()
+
+    return runCatching {
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        val cx = sizePx / 2f
+        val cy = sizePx / 2f
+        val radius = sizePx / 2f
+
+        // White outer glow/shadow
+        paint.style = Paint.Style.FILL
+        paint.color = ComposeColor.White.copy(alpha = 0.3f).toArgb()
+        c.drawCircle(cx, cy, radius, paint)
+
+        // Red filled circle (slightly smaller)
+        paint.color = red
+        c.drawCircle(cx, cy, radius * 0.85f, paint)
+
+        // Darker red border
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = max(2f, sizePx * 0.06f)
+        paint.color = darkRed
+        c.drawCircle(cx, cy, radius * 0.85f - paint.strokeWidth / 2f, paint)
+
+        // Square/stop icon instead of "E"
+        paint.style = Paint.Style.FILL
+        paint.color = white
+        val iconSize = sizePx * 0.25f
+
+        // Draw a square (stop symbol)
+        val rect = RectF(
+            cx - iconSize/2,
+            cy - iconSize/2,
+            cx + iconSize/2,
+            cy + iconSize/2
+        )
+        c.drawRoundRect(rect, iconSize * 0.1f, iconSize * 0.1f, paint)
+
+        BitmapDescriptorFactory.fromBitmap(bmp)
+    }.getOrElse {
         BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
     }
 }
