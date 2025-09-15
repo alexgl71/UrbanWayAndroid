@@ -27,9 +27,7 @@ import com.av.urbanway.presentation.viewmodels.MainViewModel
 fun HomePage(
     viewModel: MainViewModel,
     onNavigateToRealtime: () -> Unit,
-    onNavigateToRouteDetail: () -> Unit,
-    onNavigateToJourneyPlanner: () -> Unit,
-    onNavigateToJourneyResults: () -> Unit
+    onNavigateToRouteDetail: () -> Unit
 ) {
     val pinnedArrivals by viewModel.pinnedArrivals.collectAsState()
     // Collect to trigger recomposition when API data updates

@@ -208,7 +208,10 @@ fun JourneyPlannerScreen(
                     
                     Button(
                         onClick = {
+                            android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔧 Cambia FROM button clicked!")
+                            android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔧 Current UI state before startEditingJourneyFrom: ${viewModel.uiState.value}")
                             viewModel.startEditingJourneyFrom()
+                            android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 🔧 startEditingJourneyFrom() called, now UI state is: ${viewModel.uiState.value}")
                         },
                         colors = ButtonDefaults.buttonColors(
                             containerColor = Color.Transparent,
@@ -386,8 +389,8 @@ fun JourneyResultsScreen(
             onJourneySelect(journey)
         },
         onBack = {
-            viewModel.cancelJourneyPlanning()
-            onBack()
+            // Go back to journey planner without clearing data
+            viewModel.backToJourneyPlanner()
         },
         modifier = Modifier.fillMaxSize()
     )

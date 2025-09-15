@@ -63,6 +63,11 @@ fun MainScreen() {
     val locationManager = LocationManager.getInstance(context)
     
     val uiState by viewModel.uiState.collectAsState()
+
+    // Log UI state changes in MainScreen
+    LaunchedEffect(uiState) {
+        android.util.Log.d("TRANSITOAPP", "TRANSITOAPP: 📱 MainScreen detected UI state change: $uiState")
+    }
     val showBottomSheet by viewModel.showBottomSheet.collectAsState()
     val isBottomSheetExpanded by viewModel.isBottomSheetExpanded.collectAsState()
     val toastMessage by viewModel.toastMessage.collectAsState()
@@ -136,12 +141,6 @@ fun MainScreen() {
                             },
                             onNavigateToRouteDetail = {
                                 navController.navigate(Screen.RouteDetail.route)
-                            },
-                            onNavigateToJourneyPlanner = {
-                                navController.navigate(Screen.JourneyPlanner.route)
-                            },
-                            onNavigateToJourneyResults = {
-                                navController.navigate(Screen.JourneyResults.route)
                             }
                         )
                     }
@@ -164,27 +163,6 @@ fun MainScreen() {
                 )
             }
             
-            composable(Screen.JourneyPlanner.route) {
-                JourneyPlannerScreen(
-                    viewModel = viewModel,
-                    currentLocation = currentLocation,
-                    onSearchJourney = { fromAddress, fromCoords, toAddress, toCoords ->
-                        viewModel.startJourneySearch(fromAddress, fromCoords, toAddress, toCoords)
-                        navController.navigate(Screen.JourneyResults.route)
-                    },
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable(Screen.JourneyResults.route) {
-                JourneyResultsScreen(
-                    viewModel = viewModel,
-                    onJourneySelect = { journey ->
-                        viewModel.showFixedJourneyOverlay(journey)
-                    },
-                    onBack = { navController.popBackStack() }
-                )
-            }
             
             composable(Screen.FullscreenMap.route) {
                 FullscreenMapScreen(

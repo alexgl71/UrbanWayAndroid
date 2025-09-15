@@ -6,8 +6,7 @@ sealed class Screen(val route: String) {
     object RouteDetail : Screen("route_detail")
     object FullscreenMap : Screen("fullscreen_map")
     object FullscreenDestinations : Screen("fullscreen_destinations")
-    object JourneyPlanner : Screen("journey_planner")
-    object JourneyResults : Screen("journey_results")
+    // JourneyPlanner and JourneyResults removed - now handled by UIState card-based navigation
 }
 
 // Navigation arguments

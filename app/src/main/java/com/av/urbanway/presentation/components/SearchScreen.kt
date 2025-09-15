@@ -133,6 +133,43 @@ fun SearchScreen(
             // Empty search state - show segmented buttons and categories
             android.util.Log.d("TRANSITO", "Showing empty state UI")
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                // Journey Planner button - direct access to journey planning
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { viewModel.openJourneyPlanner() },
+                    colors = CardDefaults.cardColors(containerColor = Color.White),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Search,
+                            contentDescription = "Journey Planner",
+                            tint = Color(0xFFD9731F),
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column {
+                            Text(
+                                text = "Pianifica viaggio",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color.Black
+                            )
+                            Text(
+                                text = "Trova il percorso migliore",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = Color.Gray
+                            )
+                        }
+                    }
+                }
+
                 // Segmented buttons
                 SegmentedButtons(
                     selectedCategory = selectedCategory,
