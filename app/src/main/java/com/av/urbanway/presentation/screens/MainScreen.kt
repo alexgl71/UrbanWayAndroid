@@ -34,10 +34,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
 import com.av.urbanway.RequestLocationPermission
 import com.av.urbanway.data.local.LocationManager
 import com.av.urbanway.data.models.UIState
@@ -51,7 +47,6 @@ import com.av.urbanway.presentation.components.IOSFloatingToolbar
 import com.av.urbanway.presentation.components.FloatingActionBarWithCenterGap
 import com.av.urbanway.presentation.components.ToolbarButton
 import com.av.urbanway.presentation.components.SearchScreen
-import com.av.urbanway.presentation.navigation.Screen
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -59,7 +54,6 @@ import com.av.urbanway.presentation.viewmodels.MainViewModel
 fun MainScreen() {
     val context = LocalContext.current
     val viewModel: MainViewModel = viewModel { MainViewModel.create(context) }
-    val navController = rememberNavController()
     val locationManager = LocationManager.getInstance(context)
     
     val uiState by viewModel.uiState.collectAsState()
@@ -120,64 +114,26 @@ fun MainScreen() {
     ) {
         // Conditional content based on UI state
         when (uiState) {
+            UIState.NORMAL -> {
+                // Only show arrival cards in NORMAL state
+                HomePage(
+                    viewModel = viewModel,
+                    onNavigateToRealtime = {
+                        // TODO: Convert to UIState or remove if legacy
+                    },
+                    onNavigateToRouteDetail = {
+                        // TODO: Convert to UIState or remove if legacy
+                    }
+                )
+            }
             UIState.SEARCHING, UIState.EDITING_JOURNEY_FROM, UIState.EDITING_JOURNEY_TO -> {
                 SearchScreen(
                     viewModel = viewModel,
                     modifier = Modifier.fillMaxSize()
                 )
             }
-            else -> {
-                // Main Navigation Content
-                NavHost(
-                    navController = navController,
-                    startDestination = Screen.Home.route,
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    composable(Screen.Home.route) {
-                        HomePage(
-                            viewModel = viewModel,
-                            onNavigateToRealtime = {
-                                navController.navigate(Screen.RealtimeArrivals.route)
-                            },
-                            onNavigateToRouteDetail = {
-                                navController.navigate(Screen.RouteDetail.route)
-                            }
-                        )
-                    }
-            
-            composable(Screen.RealtimeArrivals.route) {
-                RealtimeArrivalsScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() },
-                    onRouteSelect = { routeId, params ->
-                        viewModel.handleRouteSelect(routeId, params)
-                        navController.navigate(Screen.RouteDetail.route)
-                    }
-                )
-            }
-            
-            composable(Screen.RouteDetail.route) {
-                RouteDetailScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            
-            composable(Screen.FullscreenMap.route) {
-                FullscreenMapScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-            
-            composable(Screen.FullscreenDestinations.route) {
-                FullscreenDestinationsScreen(
-                    viewModel = viewModel,
-                    onBack = { navController.popBackStack() }
-                )
-            }
-                }
+            UIState.ACCEPTMAPPLACE, UIState.ROUTE_DETAIL, UIState.JOURNEY_VIEW, UIState.JOURNEY_PLANNING, UIState.JOURNEY_RESULTS -> {
+                // These states show their own specific cards or no card at all
             }
         }
 
@@ -193,14 +149,18 @@ fun MainScreen() {
         }
 
 
-        // iOS-style FAB with animations (chevron ↔ X) - not in search states
-        if (showBottomSheet && uiState != UIState.SEARCHING && uiState != UIState.EDITING_JOURNEY_FROM && uiState != UIState.EDITING_JOURNEY_TO) {
+        // iOS-style FAB with animations (chevron ↔ X) - ALWAYS visible
+        if (true) { // FAB is never hidden
             val fabSize = 56.dp
             val haptics = LocalHapticFeedback.current
             
+            // Determine FAB state based on UI state and bottom sheet
+            val shouldShowX = isBottomSheetExpanded || uiState == UIState.JOURNEY_RESULTS || uiState == UIState.JOURNEY_PLANNING
+            val shouldShowPulse = !isBottomSheetExpanded && uiState != UIState.JOURNEY_RESULTS && uiState != UIState.JOURNEY_PLANNING
+
             // Smooth icon transition animation
             val iconRotation by animateFloatAsState(
-                targetValue = if (isBottomSheetExpanded) 180f else 0f,
+                targetValue = if (shouldShowX) 180f else 0f,
                 animationSpec = spring(dampingRatio = 0.7f, stiffness = Spring.StiffnessMedium),
                 label = "iconRotation"
             )
@@ -209,17 +169,17 @@ fun MainScreen() {
             val pulseScale = remember { Animatable(1f) }
             val pulseAlpha = remember { Animatable(0.2f) }
             
-            LaunchedEffect(isBottomSheetExpanded) {
-                if (!isBottomSheetExpanded) {
+            LaunchedEffect(shouldShowPulse) {
+                if (shouldShowPulse) {
                     while (true) {
                         pulseScale.animateTo(1.1f, animationSpec = tween(durationMillis = 1000))
                         pulseScale.snapTo(1f)
                     }
                 }
             }
-            
-            LaunchedEffect(isBottomSheetExpanded) {
-                if (!isBottomSheetExpanded) {
+
+            LaunchedEffect(shouldShowPulse) {
+                if (shouldShowPulse) {
                     while (true) {
                         pulseAlpha.animateTo(0f, animationSpec = tween(durationMillis = 1000))
                         pulseAlpha.snapTo(0.2f)
@@ -233,8 +193,8 @@ fun MainScreen() {
                     .offset(y = (-106).dp)
                     .zIndex(5f)
             ) {
-                // Subtle pulsing halo (only when collapsed)
-                if (!isBottomSheetExpanded) {
+                // Subtle pulsing halo (only when should pulse)
+                if (shouldShowPulse) {
                     Box(
                         modifier = Modifier
                             .size(fabSize)
@@ -250,7 +210,20 @@ fun MainScreen() {
                 Surface(
                     onClick = {
                         haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-                        viewModel.toggleBottomSheetExpanded()
+                        when (uiState) {
+                            UIState.JOURNEY_PLANNING -> {
+                                // Same action as "Annulla" button in Journey Planner
+                                viewModel.cancelJourneyPlanning()
+                            }
+                            UIState.JOURNEY_RESULTS -> {
+                                // Same action as top-right X button in Journey Results
+                                viewModel.backToJourneyPlanner()
+                            }
+                            else -> {
+                                // Normal bottom sheet toggle
+                                viewModel.toggleBottomSheetExpanded()
+                            }
+                        }
                     },
                     modifier = Modifier.size(fabSize),
                     shape = CircleShape,
@@ -266,8 +239,8 @@ fun MainScreen() {
                         modifier = Modifier.fillMaxSize()
                     ) {
                         Icon(
-                            imageVector = if (isBottomSheetExpanded) Icons.Filled.Close else Icons.Filled.ExpandLess,
-                            contentDescription = if (isBottomSheetExpanded) "Close" else "Expand",
+                            imageVector = if (shouldShowX) Icons.Filled.Close else Icons.Filled.ExpandLess,
+                            contentDescription = if (shouldShowX) "Close" else "Expand",
                             tint = Color(0xFF333333),
                             modifier = Modifier
                                 .size(36.dp)

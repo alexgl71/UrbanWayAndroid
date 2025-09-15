@@ -50,10 +50,10 @@ fun JourneyResultsView(
         }
     }
     
-    // Main card matching iOS screenshot
+    // Main card matching iOS screenshot - auto-sizing height
     Card(
         modifier = modifier
-            .fillMaxSize()
+            .fillMaxWidth()
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
@@ -63,11 +63,10 @@ fun JourneyResultsView(
             defaultElevation = 4.dp
         )
     ) {
-        Column(modifier = Modifier.fillMaxSize()) {
-            // Header with blue diamond icon and close button (matching iOS)
+        Column(modifier = Modifier.fillMaxWidth()) {
+            // Header with blue diamond icon (matching iOS)
             IOSHeaderSection(
-                journeyData = journeyData,
-                onBack = onBack
+                journeyData = journeyData
             )
 
             // Content
@@ -87,7 +86,6 @@ fun JourneyResultsView(
 @Composable
 private fun IOSHeaderSection(
     journeyData: JourneyResultsData,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -128,22 +126,7 @@ private fun IOSHeaderSection(
                 modifier = Modifier.weight(1f)
             )
             
-            // Close button
-            IconButton(onClick = onBack) {
-                Box(
-                    modifier = Modifier
-                        .size(30.dp)
-                        .background(Color.Black, CircleShape),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Filled.Close,
-                        contentDescription = "Close",
-                        tint = Color.White,
-                        modifier = Modifier.size(16.dp)
-                    )
-                }
-            }
+            // Close button removed - now handled by FAB
         }
         
         Spacer(modifier = Modifier.height(16.dp))
@@ -193,7 +176,9 @@ private fun IOSJourneyResultsList(
     val groupedJourneys = groupAndOptimizeJourneys(journeys)
     
     LazyColumn(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = 400.dp), // Limit max height but allow auto-sizing
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp)
     ) {
         // Direct journeys section

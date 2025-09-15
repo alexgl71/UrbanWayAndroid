@@ -154,10 +154,10 @@ fun JourneyPlannerScreen(
             .background(Color(0xFFD9731F))
             .padding(16.dp)
     ) {
-        // Header with "Pianifica viaggio" and "Annulla" button (copying iOS)
+        // Header with "Pianifica viaggio" (Annulla button removed - now handled by FAB)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.Start,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
@@ -166,19 +166,6 @@ fun JourneyPlannerScreen(
                 color = Color.White,
                 fontWeight = FontWeight.SemiBold
             )
-            
-            TextButton(onClick = {
-                android.util.Log.d("TRANSITOAPP", "🔄 Annulla button clicked - hiding journey planner card")
-                viewModel.cancelJourneyPlanning()
-                android.util.Log.d("TRANSITOAPP", "🔄 Journey planner card hidden")
-            }) {
-                Text(
-                    text = "Annulla",
-                    color = Color.White,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
         }
         
         Spacer(modifier = Modifier.height(20.dp))
@@ -392,7 +379,7 @@ fun JourneyResultsScreen(
             // Go back to journey planner without clearing data
             viewModel.backToJourneyPlanner()
         },
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier.fillMaxWidth()
     )
 }
 
