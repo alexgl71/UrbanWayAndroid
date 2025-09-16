@@ -609,7 +609,7 @@ fun FloatingActionBarWithCenterGap(
     modifier: Modifier = Modifier
 ) {
     val haptics = LocalHapticFeedback.current
-    val barHeight = 50.dp
+    val barHeight = 56.dp
     val slotWidth = 54.dp
     
     val totalWidth = ((leftButtons.size + rightButtons.size) * slotWidth.value + centerGap.value + 16).dp
@@ -682,7 +682,7 @@ private fun ActionBarButton(
         Icon(
             imageVector = button.icon,
             contentDescription = button.contentDescription,
-            modifier = Modifier.size(24.dp),
+            modifier = Modifier.size(28.dp),
             tint = Color(0xFF0B3D91)
         )
     }

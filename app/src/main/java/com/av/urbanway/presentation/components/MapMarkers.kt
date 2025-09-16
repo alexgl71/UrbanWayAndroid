@@ -299,3 +299,79 @@ fun makeEndMarkerDescriptor(density: Density, size: Dp = 28.dp): BitmapDescripto
     }
 }
 
+fun makeUserLocationMarkerDescriptor(density: Density, size: Dp = 20.dp): BitmapDescriptor {
+    val requestedPx = with(density) { size.roundToPx() }
+    val sizePx = if (requestedPx <= 0) 40 else requestedPx
+    val blue = ComposeColor(0xFF007AFF).toArgb() // iOS blue
+    val white = ComposeColor.White.toArgb()
+    val lightGray = ComposeColor(0xFFE0E0E0).toArgb()
+
+    return runCatching {
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        val cx = sizePx / 2f
+        val cy = sizePx / 2f
+        val outerRadius = sizePx / 2f
+        val innerRadius = outerRadius * 0.7f
+
+        // White outer circle with light gray border
+        paint.style = Paint.Style.FILL
+        paint.color = white
+        c.drawCircle(cx, cy, outerRadius, paint)
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = max(1f, sizePx * 0.05f)
+        paint.color = lightGray
+        c.drawCircle(cx, cy, outerRadius - paint.strokeWidth / 2f, paint)
+
+        // Blue inner circle (GPS dot)
+        paint.style = Paint.Style.FILL
+        paint.color = blue
+        c.drawCircle(cx, cy, innerRadius, paint)
+
+        BitmapDescriptorFactory.fromBitmap(bmp)
+    }.getOrElse {
+        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_BLUE)
+    }
+}
+
+fun makeStaleLocationMarkerDescriptor(density: Density, size: Dp = 20.dp): BitmapDescriptor {
+    val requestedPx = with(density) { size.roundToPx() }
+    val sizePx = if (requestedPx <= 0) 40 else requestedPx
+    val gray = ComposeColor(0xFF808080).toArgb() // Gray for stale
+    val white = ComposeColor.White.toArgb()
+    val lightGray = ComposeColor(0xFFE0E0E0).toArgb()
+
+    return runCatching {
+        val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
+        val c = AndroidCanvas(bmp)
+        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+        val cx = sizePx / 2f
+        val cy = sizePx / 2f
+        val outerRadius = sizePx / 2f
+        val innerRadius = outerRadius * 0.7f
+
+        // White outer circle with light gray border
+        paint.style = Paint.Style.FILL
+        paint.color = white
+        c.drawCircle(cx, cy, outerRadius, paint)
+
+        paint.style = Paint.Style.STROKE
+        paint.strokeWidth = max(1f, sizePx * 0.05f)
+        paint.color = lightGray
+        c.drawCircle(cx, cy, outerRadius - paint.strokeWidth / 2f, paint)
+
+        // Gray inner circle (stale GPS dot)
+        paint.style = Paint.Style.FILL
+        paint.color = gray
+        c.drawCircle(cx, cy, innerRadius, paint)
+
+        BitmapDescriptorFactory.fromBitmap(bmp)
+    }.getOrElse {
+        BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_ORANGE)
+    }
+}
+

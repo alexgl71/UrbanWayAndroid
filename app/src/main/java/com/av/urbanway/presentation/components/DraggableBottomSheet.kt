@@ -72,6 +72,8 @@ fun DraggableBottomSheet(
     val selectedJourney by viewModel.selectedJourney.collectAsState()
     val startLocation by viewModel.startLocation.collectAsState()
     val endLocation by viewModel.endLocation.collectAsState()
+    val isMapBeingDragged by viewModel.isMapBeingDragged.collectAsState()
+    val showRouteStopsList by viewModel.showRouteStopsList.collectAsState()
 
     if (!showBottomSheet) return
 
@@ -120,23 +122,24 @@ fun DraggableBottomSheet(
                         uiState = uiState,
                         isSheetAnimating = isSheetAnimating,
                         selectedPlace = selectedPlace,
-                        selectedJourney = selectedJourney
+                        selectedJourney = selectedJourney,
+                        viewModel = viewModel
                     )
-                    // Center fixed red circle overlay (independent of the map)
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(12.dp)
-                            .border(2.dp, Color.White, CircleShape)
-                            .then(Modifier)
-                    )
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.Center)
-                            .size(8.dp)
-                            .border(0.dp, Color.Transparent, CircleShape)
-                            .background(Color(0xFFE53935), CircleShape)
-                    )
+                    // Center red circle overlay - only show during manual map dragging in NORMAL state
+                    if (isMapBeingDragged && uiState == com.av.urbanway.data.models.UIState.NORMAL) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(12.dp)
+                                .border(2.dp, Color.White, CircleShape)
+                        )
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(8.dp)
+                                .background(Color(0xFFE53935), CircleShape)
+                        )
+                    }
                 }
 
                 // Foreground content with transition
@@ -158,9 +161,17 @@ fun DraggableBottomSheet(
                                 stopName = routeDetailData?.get("stopName") as? String ?: "",
                                 distance = routeDetailData?.get("distance") as? Int,
                                 arrivalTimes = routeDetailData?.get("arrivalTimes") as? List<com.av.urbanway.data.models.WaitingTime> ?: emptyList(),
-                                onClose = {
-                                    viewModel.clearRouteDetail()
-                                }
+                                showStopsList = showRouteStopsList,
+                                routeStops = routeTripDetails?.stops?.map { stop ->
+                                    RouteStopInfo(
+                                        stopId = stop.stopId,
+                                        stopName = stop.stopName,
+                                        stopCode = null, // Can be added later if available
+                                        arrivalTimeSeconds = null, // Can be added later if available
+                                        isSelected = stop.stopId == routeDetailData?.get("stopId") as? String
+                                    )
+                                } ?: emptyList(),
+                                selectedStopId = routeDetailData?.get("stopId") as? String
                             )
                         }
                         

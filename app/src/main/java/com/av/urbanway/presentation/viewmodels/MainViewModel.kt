@@ -154,6 +154,14 @@ class MainViewModel(
     private val _isSheetAnimating = MutableStateFlow(false)
     val isSheetAnimating: StateFlow<Boolean> = _isSheetAnimating.asStateFlow()
 
+    // Map interaction state - tracks when user is manually dragging the map
+    private val _isMapBeingDragged = MutableStateFlow(false)
+    val isMapBeingDragged: StateFlow<Boolean> = _isMapBeingDragged.asStateFlow()
+
+    // Route detail stops list visibility
+    private val _showRouteStopsList = MutableStateFlow(false)
+    val showRouteStopsList: StateFlow<Boolean> = _showRouteStopsList.asStateFlow()
+
     // Loading states
     private val _isLoadingNearbyStops = MutableStateFlow(false)
     val isLoadingNearbyStops: StateFlow<Boolean> = _isLoadingNearbyStops.asStateFlow()
@@ -350,7 +358,7 @@ class MainViewModel(
         if (wasExpanded && _uiState.value == UIState.ROUTE_DETAIL) {
             // State changes to NORMAL immediately, map clears immediately
             _uiState.value = UIState.NORMAL
-            clearRouteDetail()
+            clearRouteDetail() // This also resets the stops list toggle state
             // Nearby stops will be drawn when sheet is fully collapsed (see onSheetFullyCollapsed)
         }
     }
@@ -377,7 +385,24 @@ class MainViewModel(
         }
     }
     fun toggleBottomSheet() { _showBottomSheet.value = !_showBottomSheet.value }
-    
+
+    // Map drag state control
+    fun onMapDragStarted() {
+        _isMapBeingDragged.value = true
+        android.util.Log.d("TRANSITOAPP", "📍 Map drag started - showing center circle")
+    }
+
+    fun onMapDragEnded() {
+        _isMapBeingDragged.value = false
+        android.util.Log.d("TRANSITOAPP", "📍 Map drag ended - hiding center circle")
+    }
+
+    // Route detail stops list control
+    fun toggleRouteStopsList() {
+        _showRouteStopsList.value = !_showRouteStopsList.value
+        android.util.Log.d("TRANSITOAPP", "🚌 Route stops list toggled: ${_showRouteStopsList.value}")
+    }
+
     // Favorites
     val pinnedArrivals: StateFlow<List<PinnedArrival>> = favoritesManager.getPinnedArrivals()
         .stateIn(
@@ -953,6 +978,14 @@ class MainViewModel(
         _routeDetailData.value = null
         _targetHighlightStopId.value = null
         _routeTripDetails.value = null
+        _showRouteStopsList.value = false // Reset stops list toggle state
+    }
+
+    fun returnToNormalState() {
+        android.util.Log.d("TRANSITOAPP", "📱 returnToNormalState() called from ${_uiState.value}")
+        _uiState.value = UIState.NORMAL
+        _isBottomSheetExpanded.value = false // Collapse sheet to show route arrivals
+        _showBottomSheet.value = true // Ensure bottom sheet is visible
     }
 
     fun showFixedJourneyOverlay(journey: JourneyOption) {

@@ -155,7 +155,7 @@ fun MainScreen() {
             val haptics = LocalHapticFeedback.current
             
             // Determine FAB state based on UI state and bottom sheet
-            val shouldShowX = isBottomSheetExpanded || uiState == UIState.JOURNEY_RESULTS || uiState == UIState.JOURNEY_PLANNING
+            val shouldShowX = isBottomSheetExpanded || uiState == UIState.JOURNEY_RESULTS || uiState == UIState.JOURNEY_PLANNING || uiState == UIState.ROUTE_DETAIL
             val shouldShowPulse = !isBottomSheetExpanded && uiState != UIState.JOURNEY_RESULTS && uiState != UIState.JOURNEY_PLANNING
 
             // Smooth icon transition animation
@@ -219,6 +219,11 @@ fun MainScreen() {
                                 // Same action as top-right X button in Journey Results
                                 viewModel.backToJourneyPlanner()
                             }
+                            UIState.ROUTE_DETAIL -> {
+                                // Close route detail and return to normal state
+                                viewModel.clearRouteDetail()
+                                viewModel.returnToNormalState()
+                            }
                             else -> {
                                 // Normal bottom sheet toggle
                                 viewModel.toggleBottomSheetExpanded()
@@ -257,7 +262,7 @@ fun MainScreen() {
             Box(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .offset(y = (-100).dp)
+                    .offset(y = (-106).dp)
                     .zIndex(3f)
             ) {
                 FloatingActionBarWithCenterGap(
@@ -279,6 +284,40 @@ fun MainScreen() {
                             onClick = {
                                 android.util.Log.d("TRANSITOAPP", "Show walking directions")
                                 // TODO: Implement walking directions
+                                viewModel.showToast("Indicazioni a piedi - Feature in development")
+                            }
+                        )
+                    )
+                )
+            }
+        }
+
+        // Route detail toolbar - shown when viewing route details
+        val showRouteDetailToolbar = uiState == UIState.ROUTE_DETAIL && !showPlaceSelectionToolbar
+        if (showRouteDetailToolbar) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .offset(y = (-106).dp)
+                    .zIndex(3f)
+            ) {
+                FloatingActionBarWithCenterGap(
+                    leftButtons = listOf(
+                        ToolbarButton(
+                            icon = Icons.Filled.Menu, // Menu icon for stops list
+                            contentDescription = "Lista fermate",
+                            onClick = {
+                                android.util.Log.d("TRANSITOAPP", "Toggle route stops list")
+                                viewModel.toggleRouteStopsList()
+                            }
+                        )
+                    ),
+                    rightButtons = listOf(
+                        ToolbarButton(
+                            icon = Icons.Filled.DirectionsWalk,
+                            contentDescription = "A piedi",
+                            onClick = {
+                                android.util.Log.d("TRANSITOAPP", "Show walking directions from route")
                                 viewModel.showToast("Indicazioni a piedi - Feature in development")
                             }
                         )

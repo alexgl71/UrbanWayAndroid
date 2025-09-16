@@ -48,6 +48,7 @@ fun UrbanWayMapView(
     isSheetAnimating: Boolean = false,
     selectedPlace: com.av.urbanway.presentation.viewmodels.SelectedPlaceData? = null,
     selectedJourney: com.av.urbanway.data.models.JourneyOption? = null,
+    viewModel: com.av.urbanway.presentation.viewmodels.MainViewModel? = null,
     onMapReady: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -69,11 +70,11 @@ fun UrbanWayMapView(
         position = CameraPosition.fromLatLngZoom(mapLocation, 16f)
     }
     
-    // Move camera to selected place when it changes
+    // Move camera to selected place when it changes (instant, no animation)
     LaunchedEffect(selectedPlace) {
         selectedPlace?.let { place ->
             val placeLocation = LatLng(place.coordinates.lat, place.coordinates.lng)
-            cameraPositionState.animate(
+            cameraPositionState.move(
                 CameraUpdateFactory.newLatLngZoom(placeLocation, 17f)
             )
         }
@@ -110,10 +111,10 @@ fun UrbanWayMapView(
         ) {
         // Imperative marker diffing and reuse to prevent flicker
         val density = LocalDensity.current
-        val busIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeBusMarkerDescriptor(density, 12.dp) }
-        val selectedBusIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeSelectedBusMarkerDescriptor(density, 14.dp) }
-        val routeStopIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeRouteStopMarkerDescriptor(density, 10.dp) }
-        val selectedRouteStopIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeSelectedRouteStopMarkerDescriptor(density, 11.dp) }
+        val busIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeBusMarkerDescriptor(density, 24.dp) }
+        val selectedBusIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeSelectedBusMarkerDescriptor(density, 28.dp) }
+        val routeStopIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeRouteStopMarkerDescriptor(density, 20.dp) }
+        val selectedRouteStopIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeSelectedRouteStopMarkerDescriptor(density, 22.dp) }
         val startMarkerIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeStartMarkerDescriptor(density, 34.dp) }
         val endMarkerIcon: BitmapDescriptor = remember(key1 = density) { com.av.urbanway.presentation.components.makeEndMarkerDescriptor(density, 34.dp) }
         val bounds = visibleBounds
@@ -144,70 +145,59 @@ fun UrbanWayMapView(
                     }
                 }
                 com.av.urbanway.data.models.UIState.NORMAL -> {
-                    // Show closest 25 stops to user location for performance
-                    currentLocation?.let { userCoords ->
-                        val userLatLng = LatLng(userCoords.lat, userCoords.lng)
-                        stops.sortedBy { stop ->
-                            distanceMeters(userLatLng, LatLng(stop.stopLat, stop.stopLon))
-                        }.take(25)
-                    } ?: stops.take(25) // Fallback if no location
+                    // Show all in-memory stops - viewport filtering will handle performance
+                    stops
                 }
                 else -> emptyList() // Other states: no stops
             }
         }
         
-        // Dynamic viewport filtering for drag-to-reveal functionality
+        // Optimized viewport filtering - prioritize bounds over distance calculations
         val stopsInView = if (bounds != null) {
-            filteredStops.filter { stop -> bounds.contains(LatLng(stop.stopLat, stop.stopLon)) }
-        } else {
-            // Fallback before bounds are known: radial filter around current center
+            // Fast bounds-based filtering (much faster than distance calculations)
             filteredStops.filter { stop ->
-                distanceMeters(centerNow, LatLng(stop.stopLat, stop.stopLon)) <= fallbackRadius
+                bounds.contains(LatLng(stop.stopLat, stop.stopLon))
             }
+        } else {
+            // Initial fallback: show reasonable number of stops without expensive sorting
+            filteredStops.take(100) // Show more stops initially, viewport will filter soon
         }
 
-        // Only trigger MapEffect when absolutely necessary
-        MapEffect(stopsInView, uiState, selectedStopId) { map ->
+        // Optimized MapEffect - reduce triggers and batch operations
+        MapEffect(stopsInView.size, uiState, selectedStopId) { map ->
+            // Only recalculate when stop count changes, not on every viewport change
             val desiredIds = stopsInView.map { it.stopId }.toSet()
-            // Remove markers that are no longer visible
+
+            // Batch remove operations
             val toRemove = markerRefs.keys - desiredIds
             toRemove.forEach { id ->
                 markerRefs[id]?.remove()
                 markerRefs.remove(id)
             }
-            // Add or update markers in view (batch operations for performance)
+
+            // Batch add operations - process in chunks for better responsiveness
             stopsInView.forEach { stop ->
                 val id = stop.stopId
-                val pos = LatLng(stop.stopLat, stop.stopLon)
-                val isSelected = selectedStopId == stop.stopId
-                
-                // Determine icon once and cache the decision
-                val icon = when {
-                    isSelected && uiState == com.av.urbanway.data.models.UIState.ROUTE_DETAIL -> selectedRouteStopIcon
-                    isSelected -> selectedBusIcon
-                    uiState == com.av.urbanway.data.models.UIState.ROUTE_DETAIL -> routeStopIcon
-                    else -> busIcon
-                }
-                
                 val existing = markerRefs[id]
+
                 if (existing == null) {
-                    // Create new marker only if doesn't exist
-                    val options = MarkerOptions()
+                    // Fast marker creation - minimal property setting
+                    val pos = LatLng(stop.stopLat, stop.stopLon)
+                    val isSelected = selectedStopId == stop.stopId
+
+                    val icon = when {
+                        isSelected && uiState == com.av.urbanway.data.models.UIState.ROUTE_DETAIL -> selectedRouteStopIcon
+                        isSelected -> selectedBusIcon
+                        uiState == com.av.urbanway.data.models.UIState.ROUTE_DETAIL -> routeStopIcon
+                        else -> busIcon
+                    }
+
+                    val marker = map.addMarker(MarkerOptions()
                         .position(pos)
                         .title(stop.stopName)
-                        .snippet(stop.routes.joinToString(","))
                         .anchor(0.5f, 0.5f)
-                        .icon(icon)
-                    val marker = map.addMarker(options)
+                        .icon(icon))
                     if (marker != null) markerRefs[id] = marker
-                } else {
-                    // Update existing marker efficiently (only if changed)
-                    if (existing.position != pos) existing.position = pos
-                    if (existing.title != stop.stopName) existing.title = stop.stopName
-                    val newSnippet = stop.routes.joinToString(",")
-                    if (existing.snippet != newSnippet) existing.snippet = newSnippet
-                    // Only update icon if it's actually different (expensive operation)
-                    existing.setIcon(icon)
                 }
             }
         }
@@ -225,20 +215,40 @@ fun UrbanWayMapView(
                 icon = BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED)
             )
             
-            // Center map on selected place
+            // Center map on selected place (instant, no animation)
             LaunchedEffect(place.coordinates) {
-                kotlinx.coroutines.delay(200) // Small delay to avoid conflicts
+                kotlinx.coroutines.delay(100) // Minimal delay to avoid conflicts
                 try {
-                    cameraPositionState.animate(
-                        update = CameraUpdateFactory.newLatLngZoom(
+                    cameraPositionState.move(
+                        CameraUpdateFactory.newLatLngZoom(
                             placeLocation,
                             16f // Good zoom level for viewing a selected place
-                        ),
-                        durationMs = 600
+                        )
                     )
                 } catch (e: Exception) {
                     android.util.Log.w("GoogleMapCompose", "Failed to center on selected place: ${e.message}")
                 }
+            }
+        }
+
+        // User location indicator (blue dot with accuracy circle)
+        currentLocation?.let { location ->
+            val userLatLng = LatLng(location.lat, location.lng)
+
+            // Determine if location is stale (could be enhanced with timestamp checking)
+            val isLocationStale = false // For now, assume location is fresh
+
+            if (isLocationStale) {
+                UserLocationStaleIndicator(
+                    userLocation = userLatLng,
+                    accuracyMeters = 30f // Default accuracy for stale locations
+                )
+            } else {
+                UserLocationIndicator(
+                    userLocation = userLatLng,
+                    accuracyMeters = 20f, // Default accuracy for fresh locations
+                    showAccuracy = true
+                )
             }
         }
 
@@ -257,23 +267,22 @@ fun UrbanWayMapView(
                     width = 12f
                 )
 
-                // Center on the closest stop with perfect zoom level 14
+                // Center on the closest stop with perfect zoom level 14 (instant)
                 LaunchedEffect(routePolylinePoints, selectedStopId) {
-                    // Small delay to avoid conflicts with other camera movements
-                    kotlinx.coroutines.delay(300)
+                    // Minimal delay to avoid conflicts with other camera movements
+                    kotlinx.coroutines.delay(100)
 
                     if (selectedStopId != null) {
                         // Find the selected stop position
                         val selectedStop = routeTripDetails?.stops?.find { it.stopId == selectedStopId }
                         if (selectedStop != null) {
-                            // Center on selected stop with zoom level 14
+                            // Center on selected stop with zoom level 14 (instant)
                             try {
-                                cameraPositionState.animate(
-                                    update = CameraUpdateFactory.newLatLngZoom(
+                                cameraPositionState.move(
+                                    CameraUpdateFactory.newLatLngZoom(
                                         LatLng(selectedStop.stopLat, selectedStop.stopLon),
                                         14f // Perfect zoom level - shows great context!
-                                    ),
-                                    durationMs = 800
+                                    )
                                 )
                             } catch (e: Exception) {
                                 android.util.Log.w("GoogleMapCompose", "Failed to center on selected stop: ${e.message}")
@@ -454,9 +463,9 @@ fun UrbanWayMapView(
                 }
             }
 
-            // Auto-fit camera to accurate journey bounds using trimmed polylines
+            // Auto-fit camera to accurate journey bounds using trimmed polylines (instant)
             LaunchedEffect(selectedJourney) {
-                kotlinx.coroutines.delay(500) // Wait for polylines to render
+                kotlinx.coroutines.delay(200) // Minimal wait for polylines to render
 
                 val allPoints = mutableListOf<LatLng>()
 
@@ -479,10 +488,10 @@ fun UrbanWayMapView(
                     val bounds = boundsBuilder.build()
 
                     try {
-                        cameraPositionState.animate(
+                        cameraPositionState.move(
                             CameraUpdateFactory.newLatLngBounds(bounds, 100)
                         )
-                        android.util.Log.d("TRANSITOAPP", "🗺️ Camera fitted to accurate journey bounds")
+                        android.util.Log.d("TRANSITOAPP", "🗺️ Camera fitted to accurate journey bounds (instant)")
                     } catch (e: Exception) {
                         android.util.Log.e("TRANSITOAPP", "🗺️ Failed to fit accurate journey bounds: ${e.message}")
                     }
@@ -490,20 +499,19 @@ fun UrbanWayMapView(
             }
         }
 
-        // Reset camera to current location when route is cleared (debounced and conditional)
+        // Reset camera to current location when route is cleared (instant)
         LaunchedEffect(uiState, currentLocation) {
-            // Only animate to user location if NO place is selected (selectedPlace takes priority)
+            // Only move to user location if NO place is selected (selectedPlace takes priority)
             if (uiState == com.av.urbanway.data.models.UIState.NORMAL && currentLocation != null && selectedPlace == null) {
-                // Small delay to avoid conflicts and ensure state is stable
-                kotlinx.coroutines.delay(500)
-                
+                // Minimal delay to avoid conflicts and ensure state is stable
+                kotlinx.coroutines.delay(100)
+
                 try {
-                    cameraPositionState.animate(
-                        update = CameraUpdateFactory.newLatLngZoom(
-                            LatLng(currentLocation.lat, currentLocation.lng), 
+                    cameraPositionState.move(
+                        CameraUpdateFactory.newLatLngZoom(
+                            LatLng(currentLocation.lat, currentLocation.lng),
                             17f // Fixed zoom level for NORMAL state
-                        ),
-                        durationMs = 600 // Faster return animation
+                        )
                     )
                 } catch (e: Exception) {
                     android.util.Log.w("GoogleMapCompose", "Failed to return to user location: ${e.message}")
@@ -511,15 +519,35 @@ fun UrbanWayMapView(
             }
         }
 
-        // Attach camera idle listener within Map scope to update bounds only
+        // Optimized camera listeners - debounced bounds updates for better performance
         MapEffect(Unit) { map ->
+            var boundsUpdatePending = false
+
             map.setOnCameraIdleListener {
-                // Update visible bounds to filter markers to viewport only
+                // Debounced bounds update - only update if not already pending
+                if (!boundsUpdatePending) {
+                    boundsUpdatePending = true
+                    // Small delay to batch multiple rapid movements
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        visibleBounds = map.projection.visibleRegion.latLngBounds
+                        boundsUpdatePending = false
+                    }, 50) // Very short delay for responsiveness
+                }
+                // Camera stopped moving - drag ended
+                viewModel?.onMapDragEnded()
+            }
+
+            map.setOnMapLoadedCallback {
+                // Immediate bounds capture on map load
                 visibleBounds = map.projection.visibleRegion.latLngBounds
             }
-            map.setOnMapLoadedCallback {
-                // Capture initial bounds as soon as the map finishes rendering
-                visibleBounds = map.projection.visibleRegion.latLngBounds
+
+            // Detect when user starts dragging the map manually
+            map.setOnCameraMoveStartedListener { reason ->
+                if (reason == com.google.android.gms.maps.GoogleMap.OnCameraMoveStartedListener.REASON_GESTURE) {
+                    // User started manual drag gesture
+                    viewModel?.onMapDragStarted()
+                }
             }
         }
 
@@ -544,18 +572,17 @@ fun UrbanWayMapView(
 
 
     
-    // Update camera when location changes
+    // Update camera when location changes (instant)
     LaunchedEffect(currentLocation) {
-        // Only animate to user location if NO place is selected (selectedPlace takes priority)
+        // Only move to user location if NO place is selected (selectedPlace takes priority)
         if (selectedPlace == null) {
             currentLocation?.let { location ->
                 val newPosition = LatLng(location.lat, location.lng)
-                cameraPositionState.animate(
-                    update = CameraUpdateFactory.newLatLngZoom(
+                cameraPositionState.move(
+                    CameraUpdateFactory.newLatLngZoom(
                         newPosition,
                         16f
-                    ),
-                    durationMs = 1000
+                    )
                 )
             }
         }
