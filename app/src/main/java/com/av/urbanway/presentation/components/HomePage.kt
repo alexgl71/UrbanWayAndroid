@@ -57,6 +57,14 @@ fun HomePage(
                 .padding(bottom = 12.dp)
         )
 
+        // ChatView - shown only when there are route arrivals
+        ChatView(
+            waitingTimes = viewModel.locationCardWaitingTimes,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        )
+
         ArrivalsCards(
             waitingTimes = viewModel.locationCardWaitingTimes,
             nearbyStops = nearbyStops,
