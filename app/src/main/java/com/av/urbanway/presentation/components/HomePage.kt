@@ -6,9 +6,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.background
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -21,7 +24,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.av.urbanway.data.models.NearbyDeparturesResponse
 import com.av.urbanway.data.models.UIState
+import com.av.urbanway.data.models.StopInfo
+import com.av.urbanway.data.models.WaitingTime
+import com.av.urbanway.data.models.PinnedArrival
 import com.av.urbanway.presentation.viewmodels.MainViewModel
+import com.av.urbanway.presentation.components.widgets.SingleArrivalsCard
+import com.av.urbanway.presentation.components.widgets.ArrivalRowContent
 
 @Composable
 fun HomePage(
@@ -35,6 +43,11 @@ fun HomePage(
     val nearbyStops by viewModel.nearbyStops.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
     val selectedPlace by viewModel.selectedPlace.collectAsState()
+
+    // State for dynamic arrivals card
+    var showDynamicArrivalsCard by remember { mutableStateOf(false) }
+    // Track routes selected ONLY through ChatView (separate from global pinned)
+    var chatViewSelectedRoutes by remember { mutableStateOf<List<PinnedArrival>>(emptyList()) }
 
     Column(
         modifier = Modifier
@@ -60,10 +73,62 @@ fun HomePage(
         // ChatView - shown only when there are route arrivals
         ChatView(
             waitingTimes = viewModel.locationCardWaitingTimes,
+            nearbyStops = nearbyStops,
+            pinnedArrivals = pinnedArrivals,
+            onPin = { routeId, destination, stopId, stopName ->
+                viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+            },
+            onUnpin = { routeId, destination, stopId ->
+                viewModel.removePinnedArrival(routeId, destination, stopId)
+            },
+            onVisualizzaClick = {
+                showDynamicArrivalsCard = true
+                viewModel.showToast("Arrivi in evidenza generati!")
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
         )
+
+        // PinnedCardView - shown when user clicks "Visualizza" in ChatView
+        if (showDynamicArrivalsCard && pinnedArrivals.isNotEmpty()) {
+            PinnedCardView(
+                pinnedArrivals = pinnedArrivals,
+                waitingTimes = viewModel.locationCardWaitingTimes,
+                nearbyStops = nearbyStops,
+                onPin = { routeId, destination, stopId, stopName ->
+                    viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                },
+                onUnpin = { routeId, destination, stopId ->
+                    viewModel.removePinnedArrival(routeId, destination, stopId)
+                },
+                onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
+                    // Extract tripId from first arrival time if available
+                    val tripId = arrivalTimes.firstOrNull()?.tripId
+
+                    val params = mutableMapOf<String, Any>(
+                        "destination" to destination,
+                        "stopId" to stopId,
+                        "stopName" to stopName,
+                        "distance" to (distance ?: 0),
+                        "arrivalTimes" to arrivalTimes
+                    )
+
+                    // Only add tripId if it's actually available
+                    if (tripId != null) {
+                        params["tripId"] = tripId
+                    }
+
+                    viewModel.handleRouteSelect(routeId, params)
+                },
+                onDismiss = {
+                    showDynamicArrivalsCard = false
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 12.dp)
+            )
+        }
 
         ArrivalsCards(
             waitingTimes = viewModel.locationCardWaitingTimes,
@@ -240,3 +305,4 @@ fun NearbyDepartureCard(
         }
     }
 }
+
