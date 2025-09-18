@@ -384,13 +384,12 @@ private fun DetailPinnedRouteItem(
         Log.d("TRANSITOAPP", "DetailPinnedRouteItem - WaitingTime: route=${wt.route}, destination=${wt.destination}, stopId=${wt.stopId}, minutes=${wt.minutes}")
     }
 
-    // Follow EXACT same pattern as ArrivalsCards:
-    // 1. Filter times that match this specific pinned arrival (exact match like ArrivalsCards line 30)
-    // Keep route IDs as they are in logic, compare correctly based on how they're stored
+    // Handle the route suffix mismatch: pinned arrivals have clean IDs, API data has U suffix
     val matchingTimes = waitingTimes.filter { wt ->
-        // Try both: exact match and with "U" suffix added to pinned route
-        (wt.route == pinnedArrival.routeId || wt.route == "${pinnedArrival.routeId}U") &&
-        wt.destination == pinnedArrival.destination && wt.stopId == pinnedArrival.stopId
+        val cleanWtRoute = if (wt.route.endsWith("U")) wt.route.dropLast(1) else wt.route
+        pinnedArrival.routeId == cleanWtRoute &&
+        pinnedArrival.destination == wt.destination &&
+        pinnedArrival.stopId == wt.stopId
     }
 
     Log.d("TRANSITOAPP", "DetailPinnedRouteItem - MatchingTimes found: ${matchingTimes.size}")
@@ -398,31 +397,13 @@ private fun DetailPinnedRouteItem(
         Log.d("TRANSITOAPP", "DetailPinnedRouteItem - Matching: route=${wt.route}, destination=${wt.destination}, stopId=${wt.stopId}, minutes=${wt.minutes}")
     }
 
-    // 2. Group by route+destination (same as ArrivalsCards groupByRouteDestination)
-    val routeDestKey = "${pinnedArrival.routeId}|${pinnedArrival.destination}"
-    val groupedTimes = matchingTimes.groupBy { "${it.route}|${it.destination}" }[routeDestKey] ?: emptyList()
-
-    Log.d("TRANSITOAPP", "DetailPinnedRouteItem - GroupedTimes for key $routeDestKey: ${groupedTimes.size}")
-
-    // 3. Find representative (same as ArrivalsCards repsForGroup)
-    val representative = groupedTimes.minWithOrNull(
-        compareBy<WaitingTime> { distanceForStop(it.stopId, nearbyStops) }.thenBy { it.minutes }
-    )
-
-    Log.d("TRANSITOAPP", "DetailPinnedRouteItem - Representative: ${representative?.let { "${it.route}|${it.destination}|${it.stopId}|${it.minutes}min" } ?: "null"}")
-
-    // 4. Get all times for same stop as representative (same as ArrivalsCards timesForSameStopFromGroup)
-    val timesForStop = if (representative != null) {
-        groupedTimes.filter { it.stopId == representative.stopId }
-            .sortedBy { it.minutes }
-            .ifEmpty { listOf(representative) }
-    } else {
-        emptyList()
-    }
+    // Skip grouping step - we already have the right data from matchingTimes
+    // Just use the matching times directly since they already match route+destination+stop
+    val timesForStop = matchingTimes.sortedBy { it.minutes }
 
     Log.d("TRANSITOAPP", "DetailPinnedRouteItem - Final timesForStop: ${timesForStop.size}")
 
-    val stopInfo = representative?.let { rep -> nearbyStops.firstOrNull { it.stopId == rep.stopId } }
+    val stopInfo = nearbyStops.firstOrNull { it.stopId == pinnedArrival.stopId }
     val stopName = stopInfo?.stopName ?: pinnedArrival.stopName
     val distance = stopInfo?.distanceToStop
 

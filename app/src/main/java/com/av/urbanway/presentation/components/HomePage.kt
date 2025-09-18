@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +42,7 @@ fun HomePage(
     onNavigateToRealtime: () -> Unit,
     onNavigateToRouteDetail: () -> Unit
 ) {
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val pinnedArrivals by viewModel.pinnedArrivals.collectAsState()
     // Collect to trigger recomposition when API data updates
@@ -69,9 +71,63 @@ fun HomePage(
     var userSelectedOrariFromArrivals by remember { mutableStateOf(false) }
     var userSelectedMappaFromArrivals by remember { mutableStateOf(false) }
 
-    // BottomSheet state for detailed views
-    var showArrivalsDetailSheet by remember { mutableStateOf(false) }
-    var isRouteCirclesExpanded by remember { mutableStateOf(false) }
+    // Unified BottomSheet state
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var bottomSheetContent by remember { mutableStateOf("") } // Track what content to show
+    var lastUserChoice by remember { mutableStateOf("") } // Track which user choice opened the sheet
+
+    // Golden rule: Reset function to clear all subsequent states
+    fun resetToLevel(level: Int) {
+        when (level) {
+            0 -> { // Reset to greeting level
+                userSelectedArrivi = false
+                userSelectedMappa = false
+                userSelectedCerca = false
+                showArriviView = false
+                userSelectedAltreLinee = false
+                userSelectedOrariFromArrivals = false
+                userSelectedMappaFromArrivals = false
+                showDynamicArrivalsCard = false
+                showBottomSheet = false
+                bottomSheetContent = ""
+                lastUserChoice = ""
+            }
+            1 -> { // Reset from first level choices (after greeting)
+                showArriviView = false
+                userSelectedAltreLinee = false
+                userSelectedOrariFromArrivals = false
+                userSelectedMappaFromArrivals = false
+                showDynamicArrivalsCard = false
+                showBottomSheet = false
+                bottomSheetContent = ""
+                lastUserChoice = ""
+            }
+            2 -> { // Reset from second level choices (after arrivals)
+                userSelectedOrariFromArrivals = false
+                userSelectedMappaFromArrivals = false
+                showDynamicArrivalsCard = false
+                showBottomSheet = false
+                bottomSheetContent = ""
+                lastUserChoice = ""
+            }
+        }
+    }
+
+    // Generic function to handle BottomSheet dismissal
+    fun dismissBottomSheet() {
+        showBottomSheet = false
+        bottomSheetContent = ""
+
+        // Remove the last user choice that triggered the sheet
+        when (lastUserChoice) {
+            "altreLinee" -> userSelectedAltreLinee = false
+            "orari" -> userSelectedOrariFromArrivals = false
+            "mappa" -> userSelectedMappaFromArrivals = false
+            // Add more cases as needed for future sheet content
+        }
+
+        lastUserChoice = ""
+    }
 
     LazyColumn(
         modifier = Modifier
@@ -84,6 +140,7 @@ fun HomePage(
             item {
                 GreetingChatView(
                     onArriviClick = {
+                        resetToLevel(0)
                         userSelectedArrivi = true
                         showArriviView = true
                         // Trigger API call when user selects "Arrivi"
@@ -92,10 +149,12 @@ fun HomePage(
                         }
                     },
                     onMappaClick = {
+                        resetToLevel(0)
                         userSelectedMappa = true
                         viewModel.showToast("Mappa - Coming soon!")
                     },
                     onCercaClick = {
+                        resetToLevel(0)
                         userSelectedCerca = true
                         viewModel.showToast("Cerca - Coming soon!")
                     },
@@ -109,6 +168,14 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "🚌 Arrivi",
+                    onClick = {
+                        resetToLevel(1)
+                        userSelectedArrivi = true
+                        showArriviView = true
+                        scope.launch {
+                            viewModel.loadNearbyData()
+                        }
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -118,6 +185,11 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "🗺️ Mappa",
+                    onClick = {
+                        resetToLevel(1)
+                        userSelectedMappa = true
+                        viewModel.showToast("Mappa - Coming soon!")
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -127,6 +199,11 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "🔍 Cerca",
+                    onClick = {
+                        resetToLevel(1)
+                        userSelectedCerca = true
+                        viewModel.showToast("Cerca - Coming soon!")
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -147,7 +224,9 @@ fun HomePage(
                     },
                     onAltreLineeClick = {
                         userSelectedAltreLinee = true
-                        showArrivalsDetailSheet = true
+                        showBottomSheet = true
+                        bottomSheetContent = "arrivals_detail"
+                        lastUserChoice = "altreLinee"
                     },
                     onOrariClick = {
                         userSelectedOrariFromArrivals = true
@@ -156,7 +235,9 @@ fun HomePage(
                     },
                     onMappaClick = {
                         userSelectedMappaFromArrivals = true
-                        viewModel.showToast("Mappa degli arrivi - Coming soon!")
+                        showBottomSheet = true
+                        bottomSheetContent = "map_view"
+                        lastUserChoice = "mappa"
                     },
                     isPreview = true, // Show preview mode in chat
                     modifier = Modifier.fillMaxWidth()
@@ -169,6 +250,13 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "🚌 Altre linee",
+                    onClick = {
+                        resetToLevel(2)
+                        userSelectedAltreLinee = true
+                        showBottomSheet = true
+                        bottomSheetContent = "arrivals_detail"
+                        lastUserChoice = "altreLinee"
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -178,6 +266,12 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "📅 Orari",
+                    onClick = {
+                        resetToLevel(2)
+                        userSelectedOrariFromArrivals = true
+                        showDynamicArrivalsCard = true
+                        viewModel.showToast("Orari delle tue linee!")
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -187,6 +281,13 @@ fun HomePage(
             item {
                 UserMessageView(
                     message = "🗺️ Mappa",
+                    onClick = {
+                        resetToLevel(2)
+                        userSelectedMappaFromArrivals = true
+                        showBottomSheet = true
+                        bottomSheetContent = "map_view"
+                        lastUserChoice = "mappa"
+                    },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -226,6 +327,8 @@ fun HomePage(
                     },
                     onDismiss = {
                         showDynamicArrivalsCard = false
+                        // Remove the user choice that triggered this card
+                        userSelectedOrariFromArrivals = false
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -236,52 +339,118 @@ fun HomePage(
         // (API data flow and business logic preserved)
     }
 
-    // BottomSheet for detailed views
-    if (showArrivalsDetailSheet) {
-        ModalBottomSheet(
-            onDismissRequest = {
-                showArrivalsDetailSheet = false
-                isRouteCirclesExpanded = false
-            }
+    // Unified Modal Dialog for all content
+    if (showBottomSheet) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black.copy(alpha = 0.5f))
+                .clickable { dismissBottomSheet() },
+            contentAlignment = Alignment.Center
         ) {
-            LazyColumn(
+            Card(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 200.dp, max = 700.dp), // Set reasonable min/max height
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                    .fillMaxWidth(0.95f)
+                    .fillMaxHeight(0.85f)
+                    .clickable(enabled = false) { }, // Prevent clicks from propagating to background
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color.White),
+                elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
             ) {
-                item {
-                    ArrivalsChatView(
-                        waitingTimes = viewModel.locationCardWaitingTimes,
-                        nearbyStops = nearbyStops,
-                        pinnedArrivals = pinnedArrivals,
-                        onPin = { routeId, destination, stopId, stopName ->
-                            viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-                        },
-                        onUnpin = { routeId, destination, stopId ->
-                            viewModel.removePinnedArrival(routeId, destination, stopId)
-                        },
-                        onAltreLineeClick = {
-                            // In detail mode, this shows route circles
-                            viewModel.showToast("Route circles shown!")
-                        },
-                        onOrariClick = {
-                            showDynamicArrivalsCard = true
-                            showArrivalsDetailSheet = false
-                            viewModel.showToast("Orari delle tue linee!")
-                        },
-                        onMappaClick = {
-                            viewModel.showToast("Mappa degli arrivi - Coming soon!")
-                        },
-                        isPreview = false, // Show detail mode in sheet
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
+                Column(
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    // Header with close button
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = when (bottomSheetContent) {
+                                "arrivals_detail" -> "Altre linee"
+                                "map_view" -> "Mappa"
+                                else -> "Dettagli"
+                            },
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.Bold
+                        )
+                        IconButton(onClick = { dismissBottomSheet() }) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = "Chiudi",
+                                tint = Color.Black
+                            )
+                        }
+                    }
 
-                // Add some bottom spacing to prevent cut-off
-                item {
-                    Spacer(modifier = Modifier.height(32.dp))
+                    // Content area
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f)
+                    ) {
+                        when (bottomSheetContent) {
+                            "arrivals_detail" -> {
+                                LazyColumn(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentPadding = PaddingValues(16.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    item {
+                                        ArrivalsChatView(
+                                            waitingTimes = viewModel.locationCardWaitingTimes,
+                                            nearbyStops = nearbyStops,
+                                            pinnedArrivals = pinnedArrivals,
+                                            onPin = { routeId, destination, stopId, stopName ->
+                                                viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                                            },
+                                            onUnpin = { routeId, destination, stopId ->
+                                                viewModel.removePinnedArrival(routeId, destination, stopId)
+                                            },
+                                            onAltreLineeClick = {
+                                                // In detail mode, this shows route circles
+                                                viewModel.showToast("Route circles shown!")
+                                            },
+                                            onOrariClick = {
+                                                showDynamicArrivalsCard = true
+                                                dismissBottomSheet()
+                                                viewModel.showToast("Orari delle tue linee!")
+                                            },
+                                            onMappaClick = {
+                                                viewModel.showToast("Mappa degli arrivi - Coming soon!")
+                                            },
+                                            isPreview = false, // Show detail mode in modal
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+                            "map_view" -> {
+                                UrbanWayMapView(
+                                    currentLocation = currentLocation?.coordinates,
+                                    mapConfig = com.av.urbanway.data.local.GoogleMapsConfig.getInstance(context),
+                                    stops = nearbyStops,
+                                    uiState = UIState.NORMAL,
+                                    modifier = Modifier.fillMaxSize() // Full size for better map interaction
+                                )
+                            }
+                            // Add more content types here as needed
+                            else -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = "Content not found",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }

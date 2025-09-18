@@ -1,6 +1,7 @@
 package com.av.urbanway.presentation.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -15,6 +16,7 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun UserMessageView(
     message: String,
+    onClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     // Left-aligned user message with right padding of 40px
@@ -34,6 +36,13 @@ fun UserMessageView(
                         bottomStart = 20.dp,
                         bottomEnd = 20.dp
                     )
+                )
+                .then(
+                    if (onClick != null) {
+                        Modifier.clickable { onClick() }
+                    } else {
+                        Modifier
+                    }
                 )
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
