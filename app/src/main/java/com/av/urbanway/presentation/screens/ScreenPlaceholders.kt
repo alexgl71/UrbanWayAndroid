@@ -142,12 +142,106 @@ fun JourneyPlannerScreen(
     viewModel: MainViewModel,
     currentLocation: Location?,
     onSearchJourney: (String, Coordinates, String, Coordinates) -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    isPreview: Boolean = false
 ) {
     val startLocation by viewModel.startLocation.collectAsState()
     val endLocation by viewModel.endLocation.collectAsState()
-    
-    // Orange background (no Scaffold - copying iOS exactly)
+
+    if (isPreview) {
+        // Ultra compact preview for chat bubble
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(containerColor = Color.White),
+            shape = RoundedCornerShape(12.dp),
+            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                // FROM row (very compact)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Da:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray,
+                        modifier = Modifier.width(24.dp)
+                    )
+                    TextButton(
+                        onClick = { viewModel.startEditingJourneyFrom() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Black),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                    ) {
+                        Text(
+                            text = startLocation?.address ?: "Seleziona partenza",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (startLocation != null) Color.Black else Color.Gray,
+                            maxLines = 1
+                        )
+                    }
+                }
+                HorizontalDivider(thickness = 0.5.dp, color = Color.LightGray.copy(alpha = 0.4f))
+                // TO row (very compact)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "A:",
+                        style = MaterialTheme.typography.bodySmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.Gray,
+                        modifier = Modifier.width(24.dp)
+                    )
+                    TextButton(
+                        onClick = { viewModel.startEditingJourneyTo() },
+                        colors = ButtonDefaults.textButtonColors(contentColor = Color.Black),
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(32.dp)
+                    ) {
+                        Text(
+                            text = endLocation?.address ?: "Seleziona destinazione",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (endLocation != null) Color.Black else Color.Gray,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // Pianifica (only when both are set) - use same chip style as Greeting
+                if (startLocation != null && endLocation != null) {
+                    Spacer(Modifier.height(6.dp))
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        com.av.urbanway.presentation.components.ChatChoiceChip(
+                            text = "🧭 Pianifica",
+                            onClick = {
+                                onSearchJourney(
+                                    startLocation!!.address,
+                                    startLocation!!.coordinates,
+                                    endLocation!!.address,
+                                    endLocation!!.coordinates
+                                )
+                            }
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+
+    // Full composer (detail)
     Column(
         modifier = Modifier
             .fillMaxSize()

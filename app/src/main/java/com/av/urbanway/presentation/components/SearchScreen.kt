@@ -181,9 +181,17 @@ fun SearchScreen(
                 DestinationSuggestionsCard(
                     destinationsData = null, // TODO: Pass actual data
                     viewModel = viewModel,
-                    onPlaceSelected = { placeName ->
-                        // Handle place selection in search screen
-                        viewModel.showToast("Selected: $placeName")
+                    onPlaceSelected = { result ->
+                        // Prefer the dedicated results list for selection; keep this as fallback
+                        viewModel.selectSearchResult(
+                            com.av.urbanway.data.models.SearchResult(
+                                title = result.title,
+                                subtitle = result.subtitle,
+                                type = result.type,
+                                coordinates = result.coordinates,
+                                placeId = result.placeId
+                            )
+                        )
                     },
                     modifier = Modifier
                         .fillMaxWidth()

@@ -35,7 +35,7 @@ fun GreetingChatView(
     onArriviClick: () -> Unit,
     onMappaClick: () -> Unit,
     onSearchClick: () -> Unit,
-    onPlaceSelected: (String) -> Unit, // New callback for place selection
+    onPlaceSelected: (com.av.urbanway.data.models.SearchResult) -> Unit, // pass full result
     destinationsData: RoutesSummaryResponse? = null,
     viewModel: MainViewModel? = null,
     modifier: Modifier = Modifier
@@ -147,16 +147,16 @@ fun GreetingChatView(
                 DestinationSuggestionsCard(
                     destinationsData = destinationsData,
                     viewModel = viewModel,
-                    onPlaceSelected = { placeName ->
+                    onPlaceSelected = { result ->
                         // Update search text with selected place
-                        searchText = placeName
+                        searchText = result.title
                         // Clear search state and follow chat flow
                         viewModel.updateSearchQuery("")
                         keyboardController?.hide()
                         focusRequester.freeFocus()
                         isSearchFocused = false
                         // Notify parent component
-                        onPlaceSelected(placeName)
+                        onPlaceSelected(result)
                     },
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -194,36 +194,6 @@ fun GreetingChatView(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ChatChoiceChip(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF0B3D91).copy(alpha = 0.08f),
-            contentColor = Color(0xFF0B3D91)
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 1.dp
-        ),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
-        modifier = modifier
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp
-            )
-        )
     }
 }
 

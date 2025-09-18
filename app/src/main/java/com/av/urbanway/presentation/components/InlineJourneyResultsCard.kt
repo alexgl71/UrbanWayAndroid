@@ -29,6 +29,7 @@ fun InlineJourneyResultsCard(
     fromAddress: String,
     toAddress: String,
     onClose: () -> Unit,
+    isPreview: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     Card(
@@ -73,15 +74,17 @@ fun InlineJourneyResultsCard(
                         color = MaterialTheme.colorScheme.onSurface
                     )
                     Spacer(modifier = Modifier.weight(1f))
-                    IconButton(
-                        onClick = onClose,
-                        modifier = Modifier.size(18.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Cancel,
-                            contentDescription = "Close",
-                            tint = MaterialTheme.colorScheme.onSurface
-                        )
+                    if (!isPreview) {
+                        IconButton(
+                            onClick = onClose,
+                            modifier = Modifier.size(18.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Cancel,
+                                contentDescription = "Close",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
                 
@@ -170,6 +173,40 @@ fun InlineJourneyResultsCard(
                     }
                 }
                 else -> {
+                    if (isPreview) {
+                        // Ultra-compact list: show only route ids and total minutes
+                        Column(
+                            modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            journeys.forEach { journey ->
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    val title = if (journey.isDirect == 1) {
+                                        "Linea ${journey.route1Id}"
+                                    } else {
+                                        val r1 = journey.route1Id
+                                        val r2 = journey.route2Id ?: "?"
+                                        "Linee $r1 + $r2"
+                                    }
+                                    Text(
+                                        text = title,
+                                        fontSize = 14.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        color = MaterialTheme.colorScheme.onSurface
+                                    )
+                                    Text(
+                                        text = "${journey.totalJourneyMinutes} min",
+                                        fontSize = 14.sp,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
+                    } else {
                     // Sort journeys: direct first, then transfers
                     val directJourneys = journeys.filter { it.isDirect == 1 }
                         .sortedBy { it.totalJourneyMinutes }
@@ -215,6 +252,7 @@ fun InlineJourneyResultsCard(
                                 }
                             }
                         }
+                    }
                     }
                 }
             }

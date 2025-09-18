@@ -37,7 +37,7 @@ data class DestinationType(
 fun DestinationSuggestionsCard(
     destinationsData: RoutesSummaryResponse?,
     viewModel: MainViewModel,
-    onPlaceSelected: (String) -> Unit, // New callback for place selection
+    onPlaceSelected: (com.av.urbanway.data.models.SearchResult) -> Unit, // pass full result
     modifier: Modifier = Modifier
 ) {
     Log.d("TRANSITOAPP", "DestinationSuggestionsCard: Composing suggestions card")
@@ -97,7 +97,7 @@ fun DestinationSuggestionsCard(
                             onClick = {
                                 // Handle result selection
                                 Log.d("TRANSITOAPP", "DestinationSuggestionsCard: Selected result: ${result.title}")
-                                onPlaceSelected(result.title)
+                                onPlaceSelected(result)
                             }
                         )
                     }

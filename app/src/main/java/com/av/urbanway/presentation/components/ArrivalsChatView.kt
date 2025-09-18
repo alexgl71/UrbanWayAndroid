@@ -220,35 +220,7 @@ fun ArrivalsChatView(
 }
 
 // All the helper composables...
-@Composable
-private fun ChatChoiceChip(
-    text: String,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Button(
-        onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = Color(0xFF0B3D91).copy(alpha = 0.08f),
-            contentColor = Color(0xFF0B3D91)
-        ),
-        elevation = ButtonDefaults.buttonElevation(
-            defaultElevation = 0.dp,
-            pressedElevation = 1.dp
-        ),
-        contentPadding = PaddingValues(vertical = 8.dp, horizontal = 16.dp),
-        modifier = modifier
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodyMedium.copy(
-                fontWeight = FontWeight.Medium,
-                fontSize = 14.sp
-            )
-        )
-    }
-}
+// Reuse shared ChatChoiceChip from ChatChips.kt
 
 @Composable
 private fun RouteCirclesGrid(

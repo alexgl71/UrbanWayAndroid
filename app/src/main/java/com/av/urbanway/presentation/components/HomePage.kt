@@ -50,6 +50,12 @@ fun HomePage(
     val nearbyStops by viewModel.nearbyStops.collectAsState()
     val currentLocation by viewModel.currentLocation.collectAsState()
     val selectedPlace by viewModel.selectedPlace.collectAsState()
+    // Inline journey results state (must be collected in @Composable scope, not LazyListScope)
+    val showInlineResults by viewModel.showInlineJourneyResults.collectAsState()
+    val journeys by viewModel.journeys.collectAsState()
+    val isLoadingJourneys by viewModel.isLoadingJourneys.collectAsState()
+    val startLoc by viewModel.startLocation.collectAsState()
+    val endLoc by viewModel.endLocation.collectAsState()
 
     // State for dynamic arrivals card
     var showDynamicArrivalsCard by remember { mutableStateOf(false) }
@@ -68,6 +74,9 @@ fun HomePage(
     var userSelectedPlace by remember { mutableStateOf(false) }
     var selectedPlaceName by remember { mutableStateOf("") }
     var showJourneyView by remember { mutableStateOf(false) }
+    var isJourneyExpanded by remember { mutableStateOf(false) }
+    var isJourneyResultsExpanded by remember { mutableStateOf(false) }
+    var userSelectedPianifica by remember { mutableStateOf(false) }
 
     // ArrivalsChatView interaction tracking
     var userSelectedAltreLinee by remember { mutableStateOf(false) }
@@ -92,6 +101,9 @@ fun HomePage(
                 userSelectedPlace = false
                 selectedPlaceName = ""
                 showJourneyView = false
+                isJourneyExpanded = false
+                isJourneyResultsExpanded = false
+                userSelectedPianifica = false
                 showArriviView = false
                 userSelectedAltreLinee = false
                 userSelectedOrariFromArrivals = false
@@ -101,9 +113,13 @@ fun HomePage(
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                viewModel.closeInlineJourneyResults()
             }
             1 -> { // Reset from first level choices (after greeting)
                 showArriviView = false
+                isJourneyExpanded = false
+                isJourneyResultsExpanded = false
+                userSelectedPianifica = false
                 userSelectedAltreLinee = false
                 userSelectedOrariFromArrivals = false
                 userSelectedMappaFromArrivals = false
@@ -112,15 +128,20 @@ fun HomePage(
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                viewModel.closeInlineJourneyResults()
             }
             2 -> { // Reset from second level choices (after arrivals)
                 userSelectedOrariFromArrivals = false
                 userSelectedMappaFromArrivals = false
                 showDynamicArrivalsCard = false
+                isJourneyExpanded = false
+                isJourneyResultsExpanded = false
+                userSelectedPianifica = false
                 showBottomSheet = false
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                viewModel.closeInlineJourneyResults()
             }
         }
     }
@@ -154,6 +175,10 @@ fun HomePage(
                 bottomSheetContent = "map_view"
                 lastUserChoice = "mappa"
             }
+            "journey" -> {
+                // Expand inline instead of opening sheet
+                isJourneyExpanded = true
+            }
         }
     }
 
@@ -182,17 +207,16 @@ fun HomePage(
                         viewModel.showToast("Mappa - Coming soon!")
                     },
                     onSearchClick = {
-                        resetToLevel(0)
-                        userSelectedCerca = true
-                        viewModel.showToast("Search - Coming soon!")
+                        // Open the full search experience (SearchScreen)
+                        viewModel.openSearch()
                     },
-                    onPlaceSelected = { placeName ->
+                    onPlaceSelected = { result ->
                         resetToLevel(0)
                         userSelectedPlace = true
-                        selectedPlaceName = placeName
+                        selectedPlaceName = result.title
                         showJourneyView = true
-                        // TODO: Trigger journey planning API call to selected place
-                        viewModel.showToast("Planning journey to: $placeName")
+                        // Prefill Journey Planner fields (resolve coords if needed)
+                        viewModel.prepareJourneyForChatWithResult(result)
                     },
                     destinationsData = null, // You can pass actual data here when available
                     viewModel = viewModel,
@@ -238,9 +262,8 @@ fun HomePage(
                 UserMessageView(
                     message = "🔍 Cerca",
                     onClick = {
-                        resetToLevel(1)
-                        userSelectedCerca = true
-                        viewModel.showToast("Cerca - Coming soon!")
+                        // Open the full search experience (SearchScreen)
+                        viewModel.openSearch()
                     },
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -413,32 +436,72 @@ fun HomePage(
                 item {
                     BotMessageContainer(
                         isLastMessage = lastExpandableMessage == "journey",
-                        onExpandClick = { expandToFullscreen("journey") },
+                        onExpandClick = { isJourneyExpanded = true },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        // Mock journey data for now - TODO: Replace with actual API call
-                        val mockJourney = com.av.urbanway.data.models.JourneyOption(
-                            isDirect = 0,
-                            startStopId = 123,
-                            endStopId = 456,
-                            route1Id = "56",
-                            route2Id = null,
-                            totalStops = 8,
-                            totalJourneyMinutes = 25,
-                            startWalkingDist = 150,
-                            endWalkingDist = 200,
-                            totalWalkingDistance = 350,
-                            estimatedTravelMinutes = 25,
-                            walkingTimeMinutes = 5
-                        )
-
-                        JourneyCardView(
-                            from = "La tua posizione",
-                            to = selectedPlaceName,
-                            journey = mockJourney,
-                            currentLocation = location
+                        // Inline Journey Planner (chat) - expands inline, not in sheet
+                        com.av.urbanway.presentation.screens.JourneyPlannerScreen(
+                            viewModel = viewModel,
+                            currentLocation = location,
+                            onSearchJourney = { fromAddress, fromCoords, toAddress, toCoords ->
+                                // Treat as chip: show user bubble, then trigger inline results
+                                userSelectedPianifica = true
+                                viewModel.startJourneySearchInline(fromAddress, fromCoords, toAddress, toCoords)
+                            },
+                            onBack = { /* handled by state */ },
+                            isPreview = !isJourneyExpanded
                         )
                     }
+                }
+            }
+        }
+
+        // Inline Journey Results as bot message (avoid sheet)
+        // Show user action bubble for Pianifica (chip-style)
+        if (userSelectedPianifica) {
+            item {
+                UserMessageView(
+                    message = "🧭 Pianifica",
+                    onClick = {
+                        // Golden rule: remove subsequent content and re-trigger
+                        viewModel.closeInlineJourneyResults()
+                        userSelectedPianifica = true
+                        val s = viewModel.startLocation.value
+                        val e = viewModel.endLocation.value
+                        if (s != null && e != null) {
+                            viewModel.startJourneySearchInline(
+                                s.address, s.coordinates, e.address, e.coordinates
+                            )
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (showInlineResults && startLoc != null && endLoc != null) {
+            // Force show expand button for this bubble per UX request
+            lastExpandableMessage = "journey_results"
+
+            item {
+                BotMessageContainer(
+                    isLastMessage = true, // always show expand for this bubble
+                    onExpandClick = {
+                        showBottomSheet = true
+                        bottomSheetContent = "journey_results"
+                        lastUserChoice = "percorsi"
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    InlineJourneyResultsCard(
+                        viewModel = viewModel,
+                        journeys = journeys,
+                        isLoading = isLoadingJourneys,
+                        fromAddress = startLoc!!.address,
+                        toAddress = endLoc!!.address,
+                        onClose = { viewModel.closeInlineJourneyResults() },
+                        isPreview = true
+                    )
                 }
             }
         }
@@ -480,6 +543,7 @@ fun HomePage(
                             text = when (bottomSheetContent) {
                                 "arrivals_detail" -> "Altre linee"
                                 "map_view" -> "Mappa"
+                                "journey_results" -> "Percorsi disponibili"
                                 else -> "Dettagli"
                             },
                             style = MaterialTheme.typography.titleLarge,
@@ -544,6 +608,26 @@ fun HomePage(
                                     modifier = Modifier.fillMaxSize() // Full size for better map interaction
                                 )
                             }
+                            "journey_results" -> {
+                                // Fullscreen Journey Results
+                                val data = com.av.urbanway.presentation.components.JourneyResultsData(
+                                    fromAddress = startLoc?.address ?: "",
+                                    toAddress = endLoc?.address ?: "",
+                                    fromCoordinates = startLoc?.coordinates ?: com.av.urbanway.data.models.Coordinates(0.0, 0.0),
+                                    toCoordinates = endLoc?.coordinates ?: com.av.urbanway.data.models.Coordinates(0.0, 0.0),
+                                    journeys = journeys
+                                )
+                                com.av.urbanway.presentation.components.JourneyResultsView(
+                                    journeyData = data,
+                                    isLoading = isLoadingJourneys,
+                                    onJourneySelect = { journey ->
+                                        viewModel.showFixedJourneyOverlay(journey)
+                                    },
+                                    onBack = { dismissBottomSheet() },
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+                            
                             // Add more content types here as needed
                             else -> {
                                 Box(
@@ -653,8 +737,8 @@ fun NearbyDepartureCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-            }
-            
+}
+
             Spacer(modifier = Modifier.height(8.dp))
             
             departure.headsigns.take(2).forEach { headsign ->
@@ -706,3 +790,4 @@ fun NearbyDepartureCard(
     }
 }
 
+// No custom chip here; user selections are represented with UserMessageView for consistency

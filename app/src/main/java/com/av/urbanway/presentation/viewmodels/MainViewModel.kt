@@ -928,6 +928,43 @@ class MainViewModel(
         }
     }
 
+    // Chat-inline version: fetch journeys but keep UI state in chat
+    fun startJourneySearchInline(
+        fromAddress: String,
+        fromCoordinates: Coordinates,
+        toAddress: String,
+        toCoordinates: Coordinates
+    ) {
+        _startLocation.value = Location(fromAddress, fromCoordinates)
+        _endLocation.value = Location(toAddress, toCoordinates)
+        _allowJourneyAutoNavigation.value = true
+        _showInlineJourneyResults.value = true
+
+        viewModelScope.launch {
+            _isLoadingJourneys.value = true
+            transitRepository.getBestJourneys(
+                startLat = fromCoordinates.lat,
+                startLon = fromCoordinates.lng,
+                endLat = toCoordinates.lat,
+                endLon = toCoordinates.lng
+            ).collect { result ->
+                when (result) {
+                    is APIResult.Success -> {
+                        _journeys.value = result.data.journeys
+                    }
+                    is APIResult.Error -> {
+                        _toastMessage.value = "Errore nella ricerca del viaggio"
+                    }
+                }
+                _isLoadingJourneys.value = false
+            }
+        }
+    }
+
+    fun closeInlineJourneyResults() {
+        _showInlineJourneyResults.value = false
+    }
+
     fun handleRouteSelect(routeId: String, params: Map<String, Any> = emptyMap()) {
         // Step 1: Set animation flag to prevent drawing during transition
         _isSheetAnimating.value = true
@@ -1466,6 +1503,49 @@ class MainViewModel(
     fun backToJourneyPlanner() {
         android.util.Log.d("TRANSITOAPP", "MainViewModel - Going back to journey planner")
         _uiState.value = UIState.JOURNEY_PLANNING
+    }
+
+    // MARK: - Chat integration helpers (no navigation)
+    fun prepareJourneyForChatWithResult(result: SearchResult) {
+        // Do not change UIState. Resolve end location (fetching details if needed)
+        viewModelScope.launch {
+            try {
+                // Ensure FROM is prefilled with current location if missing
+                if (_startLocation.value == null) {
+                    val current = locationManager.getCurrentLocation()
+                    if (current != null) {
+                        _startLocation.value = current
+                    }
+                }
+
+                if (result.coordinates != null) {
+                    _endLocation.value = Location(
+                        address = result.title,
+                        coordinates = result.coordinates
+                    )
+                } else if (!result.placeId.isNullOrEmpty()) {
+                    // Fetch place details to resolve coordinates
+                    val details = placesService.getPlaceDetails(result.placeId)
+                    details.onSuccess { placeDetails ->
+                        _endLocation.value = Location(
+                            address = placeDetails.address ?: placeDetails.name,
+                            coordinates = placeDetails.coordinates
+                        )
+                    }.onFailure { e ->
+                        android.util.Log.e("TRANSITOAPP", "prepareJourneyForChatWithResult: failed to fetch details: ${e.message}")
+                        _toastMessage.value = "Impossibile ottenere i dettagli della destinazione"
+                    }
+                } else {
+                    // Fallback: set address only; coordinates unknown
+                    _endLocation.value = Location(
+                        address = result.title,
+                        coordinates = _currentLocation.value?.coordinates ?: Coordinates(0.0, 0.0)
+                    )
+                }
+            } catch (e: Exception) {
+                android.util.Log.e("TRANSITOAPP", "prepareJourneyForChatWithResult exception: ${e.message}")
+            }
+        }
     }
 
     // MARK: - Stops persistence hooks
