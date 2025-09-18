@@ -39,12 +39,27 @@ fun PinnedCardView(
     // This ensures PinnedCardView shows exactly the same data as ChatView "Linee in evidenza"
 
     if (pinnedArrivals.isNotEmpty()) {
-        Card(
-            shape = RoundedCornerShape(22.dp),
-            colors = CardDefaults.cardColors(containerColor = Color.White),
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+        // Right-aligned bot message with left padding of 40px
+        Box(
             modifier = modifier
+                .fillMaxWidth()
+                .padding(start = 40.dp)
         ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        Color.White.copy(alpha = 0.95f),
+                        RoundedCornerShape(
+                            topStart = 20.dp,
+                            topEnd = 20.dp,
+                            bottomStart = 20.dp,
+                            bottomEnd = 4.dp // Chat bubble style
+                        )
+                    )
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.Start
+            ) {
             // Custom header with dismiss button
             Row(
                 modifier = Modifier
@@ -83,6 +98,7 @@ fun PinnedCardView(
                         onRouteSelect = onRouteSelect
                     )
                 }
+            }
             }
         }
     }

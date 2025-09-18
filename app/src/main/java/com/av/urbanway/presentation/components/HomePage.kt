@@ -30,13 +30,18 @@ import com.av.urbanway.data.models.PinnedArrival
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 import com.av.urbanway.presentation.components.widgets.SingleArrivalsCard
 import com.av.urbanway.presentation.components.widgets.ArrivalRowContent
+import kotlinx.coroutines.launch
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.foundation.layout.heightIn
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HomePage(
     viewModel: MainViewModel,
     onNavigateToRealtime: () -> Unit,
     onNavigateToRouteDetail: () -> Unit
 ) {
+    val scope = rememberCoroutineScope()
     val pinnedArrivals by viewModel.pinnedArrivals.collectAsState()
     // Collect to trigger recomposition when API data updates
     val nearbyDepartures by viewModel.nearbyDepartures.collectAsState()
@@ -49,118 +54,237 @@ fun HomePage(
     // Track routes selected ONLY through ChatView (separate from global pinned)
     var chatViewSelectedRoutes by remember { mutableStateOf<List<PinnedArrival>>(emptyList()) }
 
-    Column(
+    // Chat state - controls which chat view is shown
+    var currentChatView by remember { mutableStateOf("greeting") } // "greeting", "arrivi", "mappa", "cerca"
+
+    // Chat conversation flow tracking
+    var showGreeting by remember { mutableStateOf(true) }
+    var showArriviView by remember { mutableStateOf(false) }
+    var userSelectedArrivi by remember { mutableStateOf(false) }
+    var userSelectedMappa by remember { mutableStateOf(false) }
+    var userSelectedCerca by remember { mutableStateOf(false) }
+
+    // ArrivalsChatView interaction tracking
+    var userSelectedAltreLinee by remember { mutableStateOf(false) }
+    var userSelectedOrariFromArrivals by remember { mutableStateOf(false) }
+    var userSelectedMappaFromArrivals by remember { mutableStateOf(false) }
+
+    // BottomSheet state for detailed views
+    var showArrivalsDetailSheet by remember { mutableStateOf(false) }
+    var isRouteCirclesExpanded by remember { mutableStateOf(false) }
+
+    LazyColumn(
         modifier = Modifier
             .fillMaxWidth()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        // Search bar with address display - shows selected place when available, otherwise current location
-        AddressSearchBar(
-            address = selectedPlace?.name ?: currentLocation?.address ?: "Ricerca posizione...",
-            onClick = { 
-                if (selectedPlace != null) {
-                    // Clear selected place and return to search
-                    viewModel.clearSelectedPlace()
-                }
-                viewModel.openSearch() 
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-        )
-
-        // ChatView - shown only when there are route arrivals
-        ChatView(
-            waitingTimes = viewModel.locationCardWaitingTimes,
-            nearbyStops = nearbyStops,
-            pinnedArrivals = pinnedArrivals,
-            onPin = { routeId, destination, stopId, stopName ->
-                viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-            },
-            onUnpin = { routeId, destination, stopId ->
-                viewModel.removePinnedArrival(routeId, destination, stopId)
-            },
-            onVisualizzaClick = {
-                showDynamicArrivalsCard = true
-                viewModel.showToast("Arrivi in evidenza generati!")
-            },
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(bottom = 12.dp)
-        )
-
-        // PinnedCardView - shown when user clicks "Visualizza" in ChatView
-        if (showDynamicArrivalsCard && pinnedArrivals.isNotEmpty()) {
-            PinnedCardView(
-                pinnedArrivals = pinnedArrivals,
-                waitingTimes = viewModel.locationCardWaitingTimes,
-                nearbyStops = nearbyStops,
-                onPin = { routeId, destination, stopId, stopName ->
-                    viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-                },
-                onUnpin = { routeId, destination, stopId ->
-                    viewModel.removePinnedArrival(routeId, destination, stopId)
-                },
-                onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
-                    // Extract tripId from first arrival time if available
-                    val tripId = arrivalTimes.firstOrNull()?.tripId
-
-                    val params = mutableMapOf<String, Any>(
-                        "destination" to destination,
-                        "stopId" to stopId,
-                        "stopName" to stopName,
-                        "distance" to (distance ?: 0),
-                        "arrivalTimes" to arrivalTimes
-                    )
-
-                    // Only add tripId if it's actually available
-                    if (tripId != null) {
-                        params["tripId"] = tripId
-                    }
-
-                    viewModel.handleRouteSelect(routeId, params)
-                },
-                onDismiss = {
-                    showDynamicArrivalsCard = false
-                },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(bottom = 12.dp)
-            )
+        // Always show greeting first
+        if (showGreeting) {
+            item {
+                GreetingChatView(
+                    onArriviClick = {
+                        userSelectedArrivi = true
+                        showArriviView = true
+                        // Trigger API call when user selects "Arrivi"
+                        scope.launch {
+                            viewModel.loadNearbyData()
+                        }
+                    },
+                    onMappaClick = {
+                        userSelectedMappa = true
+                        viewModel.showToast("Mappa - Coming soon!")
+                    },
+                    onCercaClick = {
+                        userSelectedCerca = true
+                        viewModel.showToast("Cerca - Coming soon!")
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
         }
 
-        ArrivalsCards(
-            waitingTimes = viewModel.locationCardWaitingTimes,
-            nearbyStops = nearbyStops,
-            pinnedArrivals = pinnedArrivals,
-            onPin = { routeId, destination, stopId, stopName ->
-                viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-            },
-            onUnpin = { routeId, destination, stopId ->
-                viewModel.removePinnedArrival(routeId, destination, stopId)
-            },
-            onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
-                // Extract tripId from first arrival time if available
-                val tripId = arrivalTimes.firstOrNull()?.tripId
-                
-                val params = mutableMapOf<String, Any>(
-                    "destination" to destination,
-                    "stopId" to stopId,
-                    "stopName" to stopName,
-                    "distance" to (distance ?: 0),
-                    "arrivalTimes" to arrivalTimes
+        // Show user selection messages
+        if (userSelectedArrivi) {
+            item {
+                UserMessageView(
+                    message = "🚌 Arrivi",
+                    modifier = Modifier.fillMaxWidth()
                 )
-                
-                // Only add tripId if it's actually available
-                if (tripId != null) {
-                    params["tripId"] = tripId
+            }
+        }
+
+        if (userSelectedMappa) {
+            item {
+                UserMessageView(
+                    message = "🗺️ Mappa",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (userSelectedCerca) {
+            item {
+                UserMessageView(
+                    message = "🔍 Cerca",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // Show bot responses based on user selections
+        if (showArriviView) {
+            item {
+                ArrivalsChatView(
+                    waitingTimes = viewModel.locationCardWaitingTimes,
+                    nearbyStops = nearbyStops,
+                    pinnedArrivals = pinnedArrivals,
+                    onPin = { routeId, destination, stopId, stopName ->
+                        viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                    },
+                    onUnpin = { routeId, destination, stopId ->
+                        viewModel.removePinnedArrival(routeId, destination, stopId)
+                    },
+                    onAltreLineeClick = {
+                        userSelectedAltreLinee = true
+                        showArrivalsDetailSheet = true
+                    },
+                    onOrariClick = {
+                        userSelectedOrariFromArrivals = true
+                        showDynamicArrivalsCard = true
+                        viewModel.showToast("Orari delle tue linee!")
+                    },
+                    onMappaClick = {
+                        userSelectedMappaFromArrivals = true
+                        viewModel.showToast("Mappa degli arrivi - Coming soon!")
+                    },
+                    isPreview = true, // Show preview mode in chat
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // Show user selections from ArrivalsChatView
+        if (userSelectedAltreLinee) {
+            item {
+                UserMessageView(
+                    message = "🚌 Altre linee",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (userSelectedOrariFromArrivals) {
+            item {
+                UserMessageView(
+                    message = "📅 Orari",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        if (userSelectedMappaFromArrivals) {
+            item {
+                UserMessageView(
+                    message = "🗺️ Mappa",
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // PinnedCardView as chat item - shown when user clicks "Orari"
+        if (showDynamicArrivalsCard && pinnedArrivals.isNotEmpty()) {
+            item {
+                PinnedCardView(
+                    pinnedArrivals = pinnedArrivals,
+                    waitingTimes = viewModel.locationCardWaitingTimes,
+                    nearbyStops = nearbyStops,
+                    onPin = { routeId, destination, stopId, stopName ->
+                        viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                    },
+                    onUnpin = { routeId, destination, stopId ->
+                        viewModel.removePinnedArrival(routeId, destination, stopId)
+                    },
+                    onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
+                        // Extract tripId from first arrival time if available
+                        val tripId = arrivalTimes.firstOrNull()?.tripId
+
+                        val params = mutableMapOf<String, Any>(
+                            "destination" to destination,
+                            "stopId" to stopId,
+                            "stopName" to stopName,
+                            "distance" to (distance ?: 0),
+                            "arrivalTimes" to arrivalTimes
+                        )
+
+                        // Only add tripId if it's actually available
+                        if (tripId != null) {
+                            params["tripId"] = tripId
+                        }
+
+                        viewModel.handleRouteSelect(routeId, params)
+                    },
+                    onDismiss = {
+                        showDynamicArrivalsCard = false
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        }
+
+        // Legacy ArrivalsCards removed for chatbot experiment
+        // (API data flow and business logic preserved)
+    }
+
+    // BottomSheet for detailed views
+    if (showArrivalsDetailSheet) {
+        ModalBottomSheet(
+            onDismissRequest = {
+                showArrivalsDetailSheet = false
+                isRouteCirclesExpanded = false
+            }
+        ) {
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 200.dp, max = 700.dp), // Set reasonable min/max height
+                contentPadding = PaddingValues(16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                item {
+                    ArrivalsChatView(
+                        waitingTimes = viewModel.locationCardWaitingTimes,
+                        nearbyStops = nearbyStops,
+                        pinnedArrivals = pinnedArrivals,
+                        onPin = { routeId, destination, stopId, stopName ->
+                            viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                        },
+                        onUnpin = { routeId, destination, stopId ->
+                            viewModel.removePinnedArrival(routeId, destination, stopId)
+                        },
+                        onAltreLineeClick = {
+                            // In detail mode, this shows route circles
+                            viewModel.showToast("Route circles shown!")
+                        },
+                        onOrariClick = {
+                            showDynamicArrivalsCard = true
+                            showArrivalsDetailSheet = false
+                            viewModel.showToast("Orari delle tue linee!")
+                        },
+                        onMappaClick = {
+                            viewModel.showToast("Mappa degli arrivi - Coming soon!")
+                        },
+                        isPreview = false, // Show detail mode in sheet
+                        modifier = Modifier.fillMaxWidth()
+                    )
                 }
-                
-                viewModel.handleRouteSelect(routeId, params)
-            },
-            modifier = Modifier
-        )
+
+                // Add some bottom spacing to prevent cut-off
+                item {
+                    Spacer(modifier = Modifier.height(32.dp))
+                }
+            }
+        }
     }
 }
 

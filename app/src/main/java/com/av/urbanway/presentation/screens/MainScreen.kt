@@ -137,20 +137,12 @@ fun MainScreen() {
             }
         }
 
-        // Draggable Bottom Sheet (conditionally visible - not in search states)
-        if (showBottomSheet && uiState != UIState.SEARCHING && uiState != UIState.EDITING_JOURNEY_FROM && uiState != UIState.EDITING_JOURNEY_TO) {
-            DraggableBottomSheet(
-                viewModel = viewModel,
-                onSearchOpen = {
-                    viewModel.openSearch()
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
-            )
-        }
+        // Draggable Bottom Sheet removed for chatbot experiment
+        // (keeping for potential future restoration)
 
 
-        // iOS-style FAB with animations (chevron ↔ X) - ALWAYS visible
-        if (true) { // FAB is never hidden
+        // FAB removed for chat-style interface
+        if (false) { // FAB disabled for chatbot experiment
             val fabSize = 56.dp
             val haptics = LocalHapticFeedback.current
             
