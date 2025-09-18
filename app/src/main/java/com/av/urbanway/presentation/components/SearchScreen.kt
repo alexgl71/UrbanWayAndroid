@@ -181,6 +181,10 @@ fun SearchScreen(
                 DestinationSuggestionsCard(
                     destinationsData = null, // TODO: Pass actual data
                     viewModel = viewModel,
+                    onPlaceSelected = { placeName ->
+                        // Handle place selection in search screen
+                        viewModel.showToast("Selected: $placeName")
+                    },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(bottom = 16.dp)

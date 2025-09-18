@@ -79,27 +79,11 @@ fun ArrivalsChatView(
     // Only show if there are routes or pinned arrivals
     if (routeIds.isNotEmpty() || pinnedArrivals.isNotEmpty()) {
         if (isPreview) {
-            // PREVIEW MODE: Chat bubble styling with padding
-            Box(
-                modifier = modifier
-                    .fillMaxWidth()
-                    .padding(start = 40.dp)
+            // PREVIEW MODE: Clean content without container styling
+            Column(
+                modifier = modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.Start
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(
-                            Color.White.copy(alpha = 0.95f),
-                            RoundedCornerShape(
-                                topStart = 20.dp,
-                                topEnd = 20.dp,
-                                bottomStart = 20.dp,
-                                bottomEnd = 4.dp // Chat bubble style
-                            )
-                        )
-                        .padding(16.dp),
-                    horizontalAlignment = Alignment.Start
-                ) {
                     // Show compact summary
                     if (pinnedArrivals.isNotEmpty()) {
                         Row(
@@ -142,7 +126,6 @@ fun ArrivalsChatView(
                         ChatChoiceChip(text = "🗺️ Mappa", onClick = onMappaClick)
                     }
                 }
-            }
         } else {
             // DETAIL MODE: Clean full-width layout, no container or padding
             Column(

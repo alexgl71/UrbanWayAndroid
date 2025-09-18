@@ -8,13 +8,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Business
-import androidx.compose.material.icons.filled.LocalHospital
-import androidx.compose.material.icons.filled.Museum
-import androidx.compose.material.icons.filled.School
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -27,6 +22,7 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import android.util.Log
 import com.av.urbanway.data.models.RoutesSummaryResponse
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 
@@ -41,52 +37,16 @@ data class DestinationType(
 fun DestinationSuggestionsCard(
     destinationsData: RoutesSummaryResponse?,
     viewModel: MainViewModel,
+    onPlaceSelected: (String) -> Unit, // New callback for place selection
     modifier: Modifier = Modifier
 ) {
+    Log.d("TRANSITOAPP", "DestinationSuggestionsCard: Composing suggestions card")
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
-    
-    // Mock destination categories (replace with actual data from destinationsData)
-    val categories = remember {
-        listOf(
-            DestinationType(
-                type = "hospital",
-                destinations = listOf("Ospedale Molinette", "Ospedale San Giovanni"),
-                icon = Icons.Filled.LocalHospital,
-                displayName = "Ospedali"
-            ),
-            DestinationType(
-                type = "university",
-                destinations = listOf("Università di Torino", "Politecnico"),
-                icon = Icons.Filled.School,
-                displayName = "Università"
-            ),
-            DestinationType(
-                type = "museum",
-                destinations = listOf("Museo Egizio", "Palazzo Reale"),
-                icon = Icons.Filled.Museum,
-                displayName = "Musei"
-            ),
-            DestinationType(
-                type = "shopping",
-                destinations = listOf("Via Roma", "Porta Nuova"),
-                icon = Icons.Filled.ShoppingCart,
-                displayName = "Shopping"
-            ),
-            DestinationType(
-                type = "restaurant",
-                destinations = listOf("Quadrilatero Romano", "San Salvario"),
-                icon = Icons.Filled.Restaurant,
-                displayName = "Ristoranti"
-            ),
-            DestinationType(
-                type = "business",
-                destinations = listOf("Centro Direzionale", "Lingotto"),
-                icon = Icons.Filled.Business,
-                displayName = "Business"
-            )
-        )
-    }
+
+    // Get search results from viewModel
+    val searchResults by viewModel.searchResults.collectAsState()
+    val searchQuery by viewModel.searchQuery.collectAsState()
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -98,98 +58,107 @@ fun DestinationSuggestionsCard(
         )
     ) {
         Column {
-            // Header Band
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.Gray.copy(alpha = 0.05f))
-                    .padding(horizontal = 16.dp, vertical = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Filled.AutoAwesome,
-                    contentDescription = null,
-                    tint = Color(0xFFD9731F),
-                    modifier = Modifier.size(18.dp)
-                )
-                Text(
-                    text = "Categorie popolari",
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 14.sp
-                    ),
-                    color = Color.Gray
-                )
-            }
+            Log.d("TRANSITOAPP", "DestinationSuggestionsCard: searchResults.size=${searchResults.size}, searchQuery='$searchQuery'")
 
-            // Horizontal Scrollable Categories
-            Row(
-                modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                categories.forEach { category ->
-                    CategoryChip(
-                        category = category,
-                        onClick = {
-                            // Dismiss keyboard and clear search
-                            keyboardController?.hide()
-                            focusManager.clearFocus()
-                            
-                            // TODO: Call PlacesService.stopAutocomplete()
-                            
-                            // Set category for home
-                            viewModel.setCategoryForHome(category.type)
-                        }
+            if (searchResults.isNotEmpty()) {
+                // Header Band
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .background(Color.Gray.copy(alpha = 0.05f))
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.Search,
+                        contentDescription = null,
+                        tint = Color(0xFF0B3D91),
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Text(
+                        text = "Risultati ricerca",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 14.sp
+                        ),
+                        color = Color.Gray
                     )
                 }
+
+                // Search Results List
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    searchResults.take(5).forEach { result ->
+                        SearchResultItem(
+                            searchResult = result,
+                            onClick = {
+                                // Handle result selection
+                                Log.d("TRANSITOAPP", "DestinationSuggestionsCard: Selected result: ${result.title}")
+                                onPlaceSelected(result.title)
+                            }
+                        )
+                    }
+                }
+            } else {
+                // Show message when no results
+                Text(
+                    text = "Inizia a digitare per cercare una destinazione...",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = Color.Gray,
+                    modifier = Modifier.padding(16.dp)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun CategoryChip(
-    category: DestinationType,
+private fun SearchResultItem(
+    searchResult: com.av.urbanway.data.models.SearchResult,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(20.dp))
-            .clickable { onClick() },
-        shape = RoundedCornerShape(20.dp),
-        color = Color.White,
-        border = androidx.compose.foundation.BorderStroke(
-            width = 1.dp,
-            color = Color.Gray.copy(alpha = 0.12f)
-        )
+            .fillMaxWidth()
+            .clickable { onClick() }
+            .padding(vertical = 12.dp, horizontal = 8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(
-            modifier = Modifier
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        // Location Icon
+        Icon(
+            imageVector = Icons.Filled.LocationOn,
+            contentDescription = null,
+            tint = Color(0xFF0B3D91),
+            modifier = Modifier.size(20.dp)
+        )
+
+        // Place Info
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            // Category Icon
-            Icon(
-                imageVector = category.icon,
-                contentDescription = null,
-                tint = Color(0xFF0B3D91),
-                modifier = Modifier.size(18.dp)
-            )
-            
-            // Category Label
             Text(
-                text = category.displayName,
+                text = searchResult.title,
                 style = MaterialTheme.typography.bodyMedium.copy(
                     fontWeight = FontWeight.Medium,
-                    fontSize = 14.sp
+                    fontSize = 15.sp
                 ),
                 color = Color.Black
             )
+
+            searchResult.subtitle?.let { subtitle ->
+                Text(
+                    text = subtitle,
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontSize = 13.sp
+                    ),
+                    color = Color.Gray
+                )
+            }
         }
     }
 }

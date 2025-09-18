@@ -65,6 +65,9 @@ fun HomePage(
     var userSelectedArrivi by remember { mutableStateOf(false) }
     var userSelectedMappa by remember { mutableStateOf(false) }
     var userSelectedCerca by remember { mutableStateOf(false) }
+    var userSelectedPlace by remember { mutableStateOf(false) }
+    var selectedPlaceName by remember { mutableStateOf("") }
+    var showJourneyView by remember { mutableStateOf(false) }
 
     // ArrivalsChatView interaction tracking
     var userSelectedAltreLinee by remember { mutableStateOf(false) }
@@ -76,6 +79,9 @@ fun HomePage(
     var bottomSheetContent by remember { mutableStateOf("") } // Track what content to show
     var lastUserChoice by remember { mutableStateOf("") } // Track which user choice opened the sheet
 
+    // Track the last expandable message for fullscreen button
+    var lastExpandableMessage by remember { mutableStateOf("") } // "arrivals", "map", etc.
+
     // Golden rule: Reset function to clear all subsequent states
     fun resetToLevel(level: Int) {
         when (level) {
@@ -83,6 +89,9 @@ fun HomePage(
                 userSelectedArrivi = false
                 userSelectedMappa = false
                 userSelectedCerca = false
+                userSelectedPlace = false
+                selectedPlaceName = ""
+                showJourneyView = false
                 showArriviView = false
                 userSelectedAltreLinee = false
                 userSelectedOrariFromArrivals = false
@@ -91,6 +100,7 @@ fun HomePage(
                 showBottomSheet = false
                 bottomSheetContent = ""
                 lastUserChoice = ""
+                lastExpandableMessage = ""
             }
             1 -> { // Reset from first level choices (after greeting)
                 showArriviView = false
@@ -101,6 +111,7 @@ fun HomePage(
                 showBottomSheet = false
                 bottomSheetContent = ""
                 lastUserChoice = ""
+                lastExpandableMessage = ""
             }
             2 -> { // Reset from second level choices (after arrivals)
                 userSelectedOrariFromArrivals = false
@@ -109,6 +120,7 @@ fun HomePage(
                 showBottomSheet = false
                 bottomSheetContent = ""
                 lastUserChoice = ""
+                lastExpandableMessage = ""
             }
         }
     }
@@ -127,6 +139,22 @@ fun HomePage(
         }
 
         lastUserChoice = ""
+    }
+
+    // Function to expand content to fullscreen
+    fun expandToFullscreen(contentType: String) {
+        when (contentType) {
+            "arrivals" -> {
+                showBottomSheet = true
+                bottomSheetContent = "arrivals_detail"
+                lastUserChoice = "altreLinee"
+            }
+            "map" -> {
+                showBottomSheet = true
+                bottomSheetContent = "map_view"
+                lastUserChoice = "mappa"
+            }
+        }
     }
 
     LazyColumn(
@@ -153,11 +181,21 @@ fun HomePage(
                         userSelectedMappa = true
                         viewModel.showToast("Mappa - Coming soon!")
                     },
-                    onCercaClick = {
+                    onSearchClick = {
                         resetToLevel(0)
                         userSelectedCerca = true
-                        viewModel.showToast("Cerca - Coming soon!")
+                        viewModel.showToast("Search - Coming soon!")
                     },
+                    onPlaceSelected = { placeName ->
+                        resetToLevel(0)
+                        userSelectedPlace = true
+                        selectedPlaceName = placeName
+                        showJourneyView = true
+                        // TODO: Trigger journey planning API call to selected place
+                        viewModel.showToast("Planning journey to: $placeName")
+                    },
+                    destinationsData = null, // You can pass actual data here when available
+                    viewModel = viewModel,
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -209,39 +247,61 @@ fun HomePage(
             }
         }
 
-        // Show bot responses based on user selections
-        if (showArriviView) {
+        if (userSelectedPlace) {
             item {
-                ArrivalsChatView(
-                    waitingTimes = viewModel.locationCardWaitingTimes,
-                    nearbyStops = nearbyStops,
-                    pinnedArrivals = pinnedArrivals,
-                    onPin = { routeId, destination, stopId, stopName ->
-                        viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                UserMessageView(
+                    message = "📍 $selectedPlaceName",
+                    onClick = {
+                        resetToLevel(1)
+                        userSelectedPlace = true
+                        viewModel.showToast("Place: $selectedPlaceName")
                     },
-                    onUnpin = { routeId, destination, stopId ->
-                        viewModel.removePinnedArrival(routeId, destination, stopId)
-                    },
-                    onAltreLineeClick = {
-                        userSelectedAltreLinee = true
-                        showBottomSheet = true
-                        bottomSheetContent = "arrivals_detail"
-                        lastUserChoice = "altreLinee"
-                    },
-                    onOrariClick = {
-                        userSelectedOrariFromArrivals = true
-                        showDynamicArrivalsCard = true
-                        viewModel.showToast("Orari delle tue linee!")
-                    },
-                    onMappaClick = {
-                        userSelectedMappaFromArrivals = true
-                        showBottomSheet = true
-                        bottomSheetContent = "map_view"
-                        lastUserChoice = "mappa"
-                    },
-                    isPreview = true, // Show preview mode in chat
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+        }
+
+        // Show bot responses based on user selections
+        if (showArriviView) {
+            // Set this as the last expandable message
+            lastExpandableMessage = "arrivals"
+
+            item {
+                BotMessageContainer(
+                    isLastMessage = lastExpandableMessage == "arrivals",
+                    onExpandClick = { expandToFullscreen("arrivals") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    ArrivalsChatView(
+                        waitingTimes = viewModel.locationCardWaitingTimes,
+                        nearbyStops = nearbyStops,
+                        pinnedArrivals = pinnedArrivals,
+                        onPin = { routeId, destination, stopId, stopName ->
+                            viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                        },
+                        onUnpin = { routeId, destination, stopId ->
+                            viewModel.removePinnedArrival(routeId, destination, stopId)
+                        },
+                        onAltreLineeClick = {
+                            userSelectedAltreLinee = true
+                            showBottomSheet = true
+                            bottomSheetContent = "arrivals_detail"
+                            lastUserChoice = "altreLinee"
+                        },
+                        onOrariClick = {
+                            userSelectedOrariFromArrivals = true
+                            showDynamicArrivalsCard = true
+                            viewModel.showToast("Orari delle tue linee!")
+                        },
+                        onMappaClick = {
+                            userSelectedMappaFromArrivals = true
+                            showBottomSheet = true
+                            bottomSheetContent = "map_view"
+                            lastUserChoice = "mappa"
+                        },
+                        isPreview = true // Show preview mode in chat
+                    )
+                }
             }
         }
 
@@ -295,43 +355,91 @@ fun HomePage(
 
         // PinnedCardView as chat item - shown when user clicks "Orari"
         if (showDynamicArrivalsCard && pinnedArrivals.isNotEmpty()) {
-            item {
-                PinnedCardView(
-                    pinnedArrivals = pinnedArrivals,
-                    waitingTimes = viewModel.locationCardWaitingTimes,
-                    nearbyStops = nearbyStops,
-                    onPin = { routeId, destination, stopId, stopName ->
-                        viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-                    },
-                    onUnpin = { routeId, destination, stopId ->
-                        viewModel.removePinnedArrival(routeId, destination, stopId)
-                    },
-                    onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
-                        // Extract tripId from first arrival time if available
-                        val tripId = arrivalTimes.firstOrNull()?.tripId
+            // Set this as the last expandable message
+            lastExpandableMessage = "pinned"
 
-                        val params = mutableMapOf<String, Any>(
-                            "destination" to destination,
-                            "stopId" to stopId,
-                            "stopName" to stopName,
-                            "distance" to (distance ?: 0),
-                            "arrivalTimes" to arrivalTimes
+            item {
+                BotMessageContainer(
+                    isLastMessage = lastExpandableMessage == "pinned",
+                    onExpandClick = { expandToFullscreen("map") },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    PinnedCardView(
+                        pinnedArrivals = pinnedArrivals,
+                        waitingTimes = viewModel.locationCardWaitingTimes,
+                        nearbyStops = nearbyStops,
+                        onPin = { routeId, destination, stopId, stopName ->
+                            viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                        },
+                        onUnpin = { routeId, destination, stopId ->
+                            viewModel.removePinnedArrival(routeId, destination, stopId)
+                        },
+                        onRouteSelect = { routeId, destination, stopId, stopName, arrivalTimes, distance ->
+                            // Extract tripId from first arrival time if available
+                            val tripId = arrivalTimes.firstOrNull()?.tripId
+
+                            val params = mutableMapOf<String, Any>(
+                                "destination" to destination,
+                                "stopId" to stopId,
+                                "stopName" to stopName,
+                                "distance" to (distance ?: 0),
+                                "arrivalTimes" to arrivalTimes
+                            )
+
+                            // Only add tripId if it's actually available
+                            if (tripId != null) {
+                                params["tripId"] = tripId
+                            }
+
+                            viewModel.handleRouteSelect(routeId, params)
+                        },
+                        onDismiss = {
+                            showDynamicArrivalsCard = false
+                            // Remove the user choice that triggered this card
+                            userSelectedOrariFromArrivals = false
+                        }
+                    )
+                }
+            }
+        }
+
+        // Show journey planning when user selects a place
+        if (showJourneyView) {
+            val location = currentLocation
+            if (location != null) {
+                // Set this as the last expandable message
+                lastExpandableMessage = "journey"
+
+                item {
+                    BotMessageContainer(
+                        isLastMessage = lastExpandableMessage == "journey",
+                        onExpandClick = { expandToFullscreen("journey") },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        // Mock journey data for now - TODO: Replace with actual API call
+                        val mockJourney = com.av.urbanway.data.models.JourneyOption(
+                            isDirect = 0,
+                            startStopId = 123,
+                            endStopId = 456,
+                            route1Id = "56",
+                            route2Id = null,
+                            totalStops = 8,
+                            totalJourneyMinutes = 25,
+                            startWalkingDist = 150,
+                            endWalkingDist = 200,
+                            totalWalkingDistance = 350,
+                            estimatedTravelMinutes = 25,
+                            walkingTimeMinutes = 5
                         )
 
-                        // Only add tripId if it's actually available
-                        if (tripId != null) {
-                            params["tripId"] = tripId
-                        }
-
-                        viewModel.handleRouteSelect(routeId, params)
-                    },
-                    onDismiss = {
-                        showDynamicArrivalsCard = false
-                        // Remove the user choice that triggered this card
-                        userSelectedOrariFromArrivals = false
-                    },
-                    modifier = Modifier.fillMaxWidth()
-                )
+                        JourneyCardView(
+                            from = "La tua posizione",
+                            to = selectedPlaceName,
+                            journey = mockJourney,
+                            currentLocation = location
+                        )
+                    }
+                }
             }
         }
 
@@ -422,8 +530,7 @@ fun HomePage(
                                             onMappaClick = {
                                                 viewModel.showToast("Mappa degli arrivi - Coming soon!")
                                             },
-                                            isPreview = false, // Show detail mode in modal
-                                            modifier = Modifier.fillMaxWidth()
+                                            isPreview = false // Show detail mode in modal
                                         )
                                     }
                                 }
