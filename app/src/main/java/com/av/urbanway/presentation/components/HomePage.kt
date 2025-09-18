@@ -214,9 +214,23 @@ fun HomePage(
                         resetToLevel(0)
                         userSelectedPlace = true
                         selectedPlaceName = result.title
-                        showJourneyView = true
-                        // Prefill Journey Planner fields (resolve coords if needed)
+                        showJourneyView = false // Quick Plan: go straight to results
+                        // Resolve FROM/TO, then auto-start inline journey search
                         viewModel.prepareJourneyForChatWithResult(result)
+                        scope.launch {
+                            // Wait briefly for place details to resolve
+                            repeat(30) { // up to ~3s
+                                val s = viewModel.startLocation.value
+                                val e = viewModel.endLocation.value
+                                if (s != null && e != null) {
+                                    viewModel.startJourneySearchInline(
+                                        s.address, s.coordinates, e.address, e.coordinates
+                                    )
+                                    return@launch
+                                }
+                                kotlinx.coroutines.delay(100)
+                            }
+                        }
                     },
                     destinationsData = null, // You can pass actual data here when available
                     viewModel = viewModel,
