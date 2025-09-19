@@ -6,6 +6,17 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.Icon
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.runtime.*
 import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
@@ -31,8 +42,9 @@ fun ChatDetailSheet(
     contentType: String,
     requestedHeightFraction: Float? = null,
     onHeightFractionApplied: (() -> Unit)? = null,
+    onSearchPlaceSelected: ((com.av.urbanway.data.models.SearchResult) -> Unit)? = null,
     modifier: Modifier = Modifier,
-    minHeight: Dp = 80.dp,
+    minHeight: Dp = 124.dp,
     topInset: Dp = 30.dp,
     collapseThreshold: Dp = 96.dp,
     contentRequestId: Int = 0
@@ -62,6 +74,10 @@ fun ChatDetailSheet(
         var contentInserted by remember { mutableStateOf(false) }
         var minSpinnerElapsed by remember { mutableStateOf(false) }
         var programmaticTargetHeight by remember { mutableStateOf<Dp?>(null) }
+        var searchActive by remember { mutableStateOf(false) }
+        var searchText by remember { mutableStateOf("") }
+        val focusRequester = remember { FocusRequester() }
+        val keyboardController = LocalSoftwareKeyboardController.current
 
         // Apply external requested height (as fraction between min and max)
         LaunchedEffect(requestedHeightFraction) {
@@ -93,6 +109,16 @@ fun ChatDetailSheet(
                     }
                 }
                 onHeightFractionApplied?.invoke()
+            }
+        }
+        LaunchedEffect(searchActive) {
+            if (searchActive) {
+                animateProgrammatic = true
+                currentHeight = maxHeightDp
+                // give compose a frame to layout the textfield
+                kotlinx.coroutines.delay(10)
+                focusRequester.requestFocus()
+                keyboardController?.show()
             }
         }
 
@@ -147,7 +173,7 @@ fun ChatDetailSheet(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(56.dp)
+                        .height(40.dp)
                         .padding(vertical = 8.dp)
                         .pointerInput(maxHeightDp, minHeightDp) {
                             detectDragGestures(
@@ -173,26 +199,80 @@ fun ChatDetailSheet(
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .height(36.dp),
+                            .padding(top = 10.dp)
+                            .height(24.dp),
                         contentAlignment = Alignment.TopCenter
                     ) {
                         Box(
                             modifier = Modifier
-                                .width(48.dp)
-                                .height(4.dp)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Color.Gray.copy(alpha = 0.5f))
+                                .width(36.dp)
+                                .height(3.dp)
+                                .clip(RoundedCornerShape(50))
+                                .background(Color(0xFF9AA0A6).copy(alpha = 0.35f))
                         )
                     }
                 }
-                // Subtle separator under handle
-                Box(
+                // Separator removed to avoid resemblance to system bar
+
+                // Header search bar (visual only; no wiring yet)
+                Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(1.dp)
-                        .background(Color.Black.copy(alpha = 0.06f))
-                )
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    if (!searchActive) {
+                        Card(
+                            shape = RoundedCornerShape(20.dp),
+                            colors = CardDefaults.cardColors(containerColor = Color(0xFFF2F4F7)),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    searchActive = true
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(40.dp)
+                                    .padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Cerca una destinazione...",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = Color.Gray
+                                )
+                            }
+                        }
+                    } else {
+                        OutlinedTextField(
+                            value = searchText,
+                            onValueChange = {
+                                searchText = it
+                                // Wire suggestions: update query when 2+ chars, else clear
+                                if (it.length >= 2) {
+                                    viewModel.updateSearchQuery(it)
+                                } else {
+                                    viewModel.updateSearchQuery("")
+                                }
+                            },
+                            placeholder = { Text("Cerca una destinazione...", color = Color.Gray) },
+                            singleLine = true,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                            keyboardActions = KeyboardActions(
+                                onSearch = {
+                                    keyboardController?.hide()
+                                }
+                            ),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(48.dp)
+                                .focusRequester(focusRequester)
+                        )
+                    }
+                }
 
                 // Content
                 Box(
@@ -209,7 +289,18 @@ fun ChatDetailSheet(
                         minSpinnerElapsed && reachedTarget
                     } else true
 
-                    if (!shouldShowContent) {
+                    if (searchActive) {
+                        DestinationSuggestionsCard(
+                            destinationsData = null,
+                            viewModel = viewModel,
+                            onPlaceSelected = { result ->
+                                viewModel.updateSearchQuery("")
+                                keyboardController?.hide()
+                                searchActive = false
+                                onSearchPlaceSelected?.invoke(result)
+                            }
+                        )
+                    } else if (!shouldShowContent) {
                         Box(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center

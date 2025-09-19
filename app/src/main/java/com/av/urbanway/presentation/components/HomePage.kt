@@ -243,7 +243,7 @@ fun HomePage(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
-            contentPadding = PaddingValues(bottom = 100.dp)
+            contentPadding = PaddingValues(bottom = 140.dp)
         ) {
         // Always show greeting first
         if (showGreeting) {
@@ -706,6 +706,29 @@ fun HomePage(
             contentType = sheetContentType,
             requestedHeightFraction = sheetHeightFraction,
             onHeightFractionApplied = { sheetHeightFraction = null },
+            onSearchPlaceSelected = { result ->
+                // Clear branch first, then collapse sheet so request is honored
+                resetToLevel(0)
+                collapseAndClearDraggableSheet()
+                // Show user bubble for selected place
+                userSelectedPlace = true
+                selectedPlaceName = result.title
+                showJourneyView = false
+                viewModel.prepareJourneyForChatWithResult(result)
+                scope.launch {
+                    repeat(30) {
+                        val s = viewModel.startLocation.value
+                        val e = viewModel.endLocation.value
+                        if (s != null && e != null) {
+                            viewModel.startJourneySearchInline(
+                                s.address, s.coordinates, e.address, e.coordinates
+                            )
+                            return@launch
+                        }
+                        kotlinx.coroutines.delay(100)
+                    }
+                }
+            },
             contentRequestId = sheetContentRequestId,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
