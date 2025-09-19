@@ -4,9 +4,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material3.*
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -26,6 +30,19 @@ import com.av.urbanway.presentation.components.widgets.RouteBadge
 import com.av.urbanway.presentation.components.widgets.RouteInfoColumn
 import com.av.urbanway.presentation.components.ChatChoiceChip
 import android.util.Log
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+
+// Lightweight, precomputed item for pinned rows in detail mode
+private data class PinnedDetailData(
+    val routeId: String,
+    val destination: String,
+    val stopId: String,
+    val stopName: String,
+    val distance: Int,
+    val timesForStop: List<WaitingTime>
+)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
@@ -48,33 +65,28 @@ fun ArrivalsChatView(
     // State to control route circles visibility
     var showRouteCircles by remember { mutableStateOf(pinnedArrivals.isEmpty()) }
 
-    // Extract unique route IDs from waiting times and clean them
-    val allRouteIds = waitingTimes.map { it.route }
-        .distinct()
-        .map { routeId ->
-            // Clean up route names by removing trailing "U"
-            if (routeId.endsWith("U")) routeId.dropLast(1) else routeId
-        }
-        .distinct()
-        .sortedBy { routeId ->
-            // Sort numerically, with non-numeric routes at the end
-            routeId.toIntOrNull() ?: Int.MAX_VALUE
-        }
+    // Extract unique route IDs and filter for display. Use remember to avoid heavy recompute on sheet drag.
+    val routeIds by remember(waitingTimes, pinnedArrivals) {
+        mutableStateOf(
+            waitingTimes.map { it.route }
+                .distinct()
+                .map { routeId -> if (routeId.endsWith("U")) routeId.dropLast(1) else routeId }
+                .distinct()
+                .sortedBy { routeId -> routeId.toIntOrNull() ?: Int.MAX_VALUE }
+                .filter { routeId ->
+                    val availableHeadsigns = waitingTimes
+                        .filter { (if (it.route.endsWith("U")) it.route.dropLast(1) else it.route) == routeId }
+                        .map { it.destination }
+                        .distinct()
 
-    // Filter route IDs to only show those with unpinned headsigns
-    val routeIds = allRouteIds.filter { routeId ->
-        val availableHeadsigns = waitingTimes
-            .filter { (if (it.route.endsWith("U")) it.route.dropLast(1) else it.route) == routeId }
-            .map { it.destination }
-            .distinct()
+                    val pinnedHeadsigns = pinnedArrivals
+                        .filter { it.routeId == routeId }
+                        .map { it.destination }
+                        .distinct()
 
-        val pinnedHeadsigns = pinnedArrivals
-            .filter { it.routeId == routeId }
-            .map { it.destination }
-            .distinct()
-
-        // Show route circle only if there are unpinned headsigns available
-        availableHeadsigns.size > pinnedHeadsigns.size
+                    availableHeadsigns.size > pinnedHeadsigns.size
+                }
+        )
     }
 
     // Only show if there are routes or pinned arrivals
@@ -128,73 +140,122 @@ fun ArrivalsChatView(
                     }
                 }
         } else {
-            // DETAIL MODE: Clean full-width layout, no container or padding
-            Column(
-                modifier = modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.Start
-            ) {
-                // Show pinned routes first if they exist
-                if (pinnedArrivals.isNotEmpty()) {
-                    Text(
-                        text = "Linee preferite da te",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.2.sp
-                        ),
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+            // DETAIL MODE: Use LazyColumn to keep layout stable under sheet height changes
+            // Precompute lightweight maps to avoid heavy filtering during drags
 
-                    pinnedArrivals.forEach { pinnedArrival ->
-                        DetailPinnedRouteItem(
-                            pinnedArrival = pinnedArrival,
-                            waitingTimes = waitingTimes,
-                            nearbyStops = nearbyStops,
-                            onClick = {
-                                onUnpin(pinnedArrival.routeId, pinnedArrival.destination, pinnedArrival.stopId)
-                            },
+            fun String.cleanedRoute(): String = if (this.endsWith("U")) this.dropLast(1) else this
+
+            val stopsById = remember(nearbyStops) {
+                nearbyStops.associateBy { it.stopId }
+            }
+
+            val wtByStop = remember(waitingTimes) {
+                waitingTimes.groupBy { it.stopId }
+            }
+
+            val pinnedDetailItems = remember(waitingTimes, pinnedArrivals, nearbyStops) {
+                pinnedArrivals.map { p ->
+                    val stopInfo = stopsById[p.stopId]
+                    val timesAtStop = wtByStop[p.stopId].orEmpty().filter {
+                        it.route.cleanedRoute() == p.routeId && it.destination == p.destination
+                    }
+                    PinnedDetailData(
+                        routeId = p.routeId,
+                        destination = p.destination,
+                        stopId = p.stopId,
+                        stopName = stopInfo?.stopName ?: "",
+                        distance = stopInfo?.distanceToStop ?: Int.MAX_VALUE,
+                        timesForStop = timesAtStop
+                    )
+                }
+            }
+
+            // Pre-chunk route IDs into rows for lazy list rendering
+            val routeRows = remember(routeIds) { routeIds.chunked(6) }
+
+            LazyColumn(
+                modifier = modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                if (pinnedArrivals.isNotEmpty()) {
+                    item(key = "pinned_header") {
+                        Text(
+                            text = "Linee preferite da te",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.2.sp
+                            ),
+                            color = Color.Black,
+                        )
+                    }
+
+                    items(
+                        items = pinnedDetailItems,
+                        key = { it.routeId + "|" + it.destination + "|" + it.stopId }
+                    ) { item ->
+                        PinnedDetailRow(
+                            data = item,
+                            onUnpin = { onUnpin(item.routeId, item.destination, item.stopId) },
                             modifier = Modifier.padding(vertical = 2.dp)
                         )
                     }
-                    Spacer(modifier = Modifier.height(12.dp))
+
+                    item(key = "pinned_spacer") { Spacer(modifier = Modifier.height(4.dp)) }
                 }
 
-                // Show route circles if requested
                 if (showRouteCircles && routeIds.isNotEmpty()) {
-                    Text(
-                        text = "Linee disponibili",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.Medium,
-                            letterSpacing = 0.2.sp
-                        ),
-                        color = Color.Black,
-                        modifier = Modifier.padding(bottom = 12.dp)
-                    )
-
-                    RouteCirclesGrid(
-                        routeIds = routeIds,
-                        onRouteClick = { routeId ->
-                            selectedRouteId = routeId
-                            showHeadsignPopup = true
-                        }
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-                }
-
-                // Choice chips for detail mode
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    if (routeIds.isNotEmpty() && !showRouteCircles) {
-                        ChatChoiceChip(
-                            text = "🚌 Altre linee",
-                            onClick = { showRouteCircles = true; onAltreLineeClick() }
+                    item(key = "routes_header") {
+                        Text(
+                            text = "Linee disponibili",
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Medium,
+                                letterSpacing = 0.2.sp
+                            ),
+                            color = Color.Black,
                         )
                     }
-                    ChatChoiceChip(text = "📅 Orari", onClick = onOrariClick)
-                    ChatChoiceChip(text = "🗺️ Mappa", onClick = onMappaClick)
+                    itemsIndexed(
+                        items = routeRows,
+                        key = { index, _ -> "route_row_$index" }
+                    ) { _, rowRoutes ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            rowRoutes.forEach { routeId ->
+                                RouteCircle(
+                                    routeId = routeId,
+                                    onClick = {
+                                        selectedRouteId = routeId
+                                        showHeadsignPopup = true
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                            repeat(6 - rowRoutes.size) {
+                                Spacer(modifier = Modifier.weight(1f))
+                            }
+                        }
+                    }
+                }
+
+                item(key = "chips") {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (routeIds.isNotEmpty() && !showRouteCircles) {
+                            ChatChoiceChip(
+                                text = "🚌 Altre linee",
+                                onClick = { showRouteCircles = true; onAltreLineeClick() }
+                            )
+                        }
+                        ChatChoiceChip(text = "📅 Orari", onClick = onOrariClick)
+                        ChatChoiceChip(text = "🗺️ Mappa", onClick = onMappaClick)
+                    }
                 }
             }
         }
@@ -223,32 +284,61 @@ fun ArrivalsChatView(
 // All the helper composables...
 // Reuse shared ChatChoiceChip from ChatChips.kt
 
+// RouteCirclesGrid removed; routed rows lazily via parent LazyColumn
+
 @Composable
-private fun RouteCirclesGrid(
-    routeIds: List<String>,
-    onRouteClick: (String) -> Unit,
+private fun PinnedDetailRow(
+    data: PinnedDetailData,
+    onUnpin: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    val chunkedRoutes = routeIds.chunked(6)
+    Row(
+        modifier = modifier
+            .fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // Left: route badge
+        RouteBadge(route = data.routeId)
 
-    Column(modifier = modifier) {
-        chunkedRoutes.forEach { rowRoutes ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                rowRoutes.forEach { routeId ->
-                    RouteCircle(
-                        routeId = routeId,
-                        onClick = { onRouteClick(routeId) },
-                        modifier = Modifier.weight(1f)
-                    )
-                }
-                repeat(6 - rowRoutes.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
+        Spacer(modifier = Modifier.width(12.dp))
+
+        // Center: destination + times
+        if (data.timesForStop.isNotEmpty()) {
+            RouteInfoColumn(
+                destination = data.destination,
+                stopName = data.stopName,
+                distance = data.distance,
+                waitingTimes = data.timesForStop,
+                modifier = Modifier.weight(1f)
+            )
+        } else {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = data.destination,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontSize = 14.sp,
+                        letterSpacing = (-0.3).sp
+                    ),
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color(0xFF555555),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${data.stopName} - Nessun orario disponibile",
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
+                    color = Color.Gray
+                )
             }
-            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        // Right: unpin action
+        IconButton(onClick = onUnpin) {
+            Icon(
+                imageVector = Icons.Filled.PushPin,
+                contentDescription = "Rimuovi",
+                tint = Color(0xFFD9731F)
+            )
         }
     }
 }
@@ -331,14 +421,7 @@ private fun DetailPinnedRouteItem(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    // Debug logging
-    Log.d("TRANSITOAPP", "DetailPinnedRouteItem - Looking for: routeId=${pinnedArrival.routeId}, destination=${pinnedArrival.destination}, stopId=${pinnedArrival.stopId}")
-    Log.d("TRANSITOAPP", "DetailPinnedRouteItem - Total waitingTimes: ${waitingTimes.size}")
-
-    // Log first few waiting times for comparison
-    waitingTimes.take(3).forEach { wt ->
-        Log.d("TRANSITOAPP", "DetailPinnedRouteItem - WaitingTime: route=${wt.route}, destination=${wt.destination}, stopId=${wt.stopId}, minutes=${wt.minutes}")
-    }
+    // Debug logging removed to reduce jank during sheet drags
 
     // Handle the route suffix mismatch: pinned arrivals have clean IDs, API data has U suffix
     val matchingTimes = waitingTimes.filter { wt ->

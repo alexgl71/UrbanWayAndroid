@@ -36,7 +36,6 @@ import com.av.urbanway.presentation.components.chat.ArrivalsChatView
 import com.av.urbanway.presentation.components.chat.PinnedCardView
 import com.av.urbanway.presentation.components.chat.BotMessageContainer
 import com.av.urbanway.presentation.components.chat.UserMessageView
-import com.av.urbanway.presentation.components.ChatDraggableSheet
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.heightIn
@@ -97,11 +96,10 @@ fun HomePage(
     // Track the last expandable message for fullscreen button
     var lastExpandableMessage by remember { mutableStateOf("") } // "arrivals", "map", etc.
 
-    // Draggable Sheet State (always visible)
-    var sheetHeightFraction by remember { mutableStateOf(0.12f) } // compact header visible
-    var sheetContentType by remember { mutableStateOf("") } // Empty at start
-    var isDraggable by remember { mutableStateOf(true) }
-    var showDraggableSheet by remember { mutableStateOf(true) } // Deprecated: sheet is always visible
+    // Chat detail sheet state (always visible). Height requested as fraction between min..max
+    var sheetHeightFraction by remember { mutableStateOf<Float?>(null) }
+    var sheetContentType by remember { mutableStateOf("") }
+    var sheetContentRequestId by remember { mutableStateOf(0) }
 
     // Golden rule: Reset function to clear all subsequent states
     fun resetToLevel(level: Int) {
@@ -126,7 +124,7 @@ fun HomePage(
                 lastUserChoice = ""
                 lastExpandableMessage = ""
                 // Keep the sheet compact and visible
-                sheetHeightFraction = 0.12f
+        sheetHeightFraction = null
                 viewModel.closeInlineJourneyResults()
             }
             1 -> { // Reset from first level choices (after greeting)
@@ -143,7 +141,7 @@ fun HomePage(
                 lastUserChoice = ""
                 lastExpandableMessage = ""
                 // Keep the sheet compact and visible
-                sheetHeightFraction = 0.12f
+        sheetHeightFraction = null
                 viewModel.closeInlineJourneyResults()
             }
             2 -> { // Reset from second level choices (after arrivals)
@@ -158,7 +156,7 @@ fun HomePage(
                 lastUserChoice = ""
                 lastExpandableMessage = ""
                 // Keep the sheet compact and visible
-                sheetHeightFraction = 0.12f
+        sheetHeightFraction = null
                 viewModel.closeInlineJourneyResults()
             }
         }
@@ -184,10 +182,9 @@ fun HomePage(
     fun showInDraggableSheet(contentType: String, heightFraction: Float = 0.5f) {
         android.util.Log.d("URBANWAY_DEBUG", "showInDraggableSheet called with contentType: $contentType, heightFraction: $heightFraction")
         sheetContentType = contentType
+        sheetContentRequestId += 1
+        // Always visible; just set the content and optional target height fraction
         sheetHeightFraction = heightFraction
-        showDraggableSheet = true
-        isDraggable = true
-        android.util.Log.d("URBANWAY_DEBUG", "showDraggableSheet set to: $showDraggableSheet")
 
         when (contentType) {
             "arrivals" -> {
@@ -554,23 +551,20 @@ fun HomePage(
             // (API data flow and business logic preserved)
         }
 
-        // NEW: Draggable Sheet for real-time data
-        // Always-visible draggable sheet anchored to bottom
-        ChatDraggableSheet(
+        // Always-visible chat detail sheet at bottom
+        ChatDetailSheet(
             viewModel = viewModel,
-            currentHeightFraction = sheetHeightFraction,
-            onHeightChange = { newHeightFraction ->
-                sheetHeightFraction = newHeightFraction
-            },
             contentType = sheetContentType,
+            requestedHeightFraction = sheetHeightFraction,
+            onHeightFractionApplied = { sheetHeightFraction = null },
+            contentRequestId = sheetContentRequestId,
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
         )
-    }
 
-    // OLD: Unified Modal Dialog for all content (keeping for journey results)
-    if (showBottomSheet) {
+        // OLD: Unified Modal Dialog for all content (keeping for journey results)
+        if (showBottomSheet) {
         Box(
             modifier = Modifier
                 .fillMaxSize()
@@ -708,7 +702,7 @@ fun HomePage(
 }
 
 @Composable
-private fun AddressSearchBar(
+fun AddressSearchBar(
     address: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier
@@ -796,10 +790,10 @@ fun NearbyDepartureCard(
                     style = MaterialTheme.typography.bodySmall,
                     color = Color.Gray
                 )
-}
+            }
 
             Spacer(modifier = Modifier.height(8.dp))
-            
+
             departure.headsigns.take(2).forEach { headsign ->
                 Row(
                     modifier = Modifier
@@ -822,7 +816,7 @@ fun NearbyDepartureCard(
                             color = Color.Gray
                         )
                     }
-                    
+
                     // Show next departures if available
                     headsign.departures.take(3).forEach { dep ->
                         Card(
@@ -847,6 +841,7 @@ fun NearbyDepartureCard(
             }
         }
     }
+}
 }
 
 // No custom chip here; user selections are represented with UserMessageView for consistency
