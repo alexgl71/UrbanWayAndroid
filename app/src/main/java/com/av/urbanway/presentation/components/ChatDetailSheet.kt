@@ -34,6 +34,7 @@ fun ChatDetailSheet(
     modifier: Modifier = Modifier,
     minHeight: Dp = 80.dp,
     topInset: Dp = 30.dp,
+    collapseThreshold: Dp = 96.dp,
     contentRequestId: Int = 0
 ) {
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
@@ -147,6 +148,13 @@ fun ChatDetailSheet(
                                     animateProgrammatic = false
                                     currentHeight = next
                                     change.consume()
+                                },
+                                onDragEnd = {
+                                    // If released near bottom, collapse to min height
+                                    if (currentHeight <= (minHeightDp + collapseThreshold)) {
+                                        animateProgrammatic = false
+                                        currentHeight = minHeightDp
+                                    }
                                 }
                             )
                         },
