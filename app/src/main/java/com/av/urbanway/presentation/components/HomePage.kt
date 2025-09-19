@@ -31,6 +31,12 @@ import com.av.urbanway.data.models.PinnedArrival
 import com.av.urbanway.presentation.viewmodels.MainViewModel
 import com.av.urbanway.presentation.components.widgets.SingleArrivalsCard
 import com.av.urbanway.presentation.components.widgets.ArrivalRowContent
+import com.av.urbanway.presentation.components.chat.GreetingChatView
+import com.av.urbanway.presentation.components.chat.ArrivalsChatView
+import com.av.urbanway.presentation.components.chat.PinnedCardView
+import com.av.urbanway.presentation.components.chat.BotMessageContainer
+import com.av.urbanway.presentation.components.chat.UserMessageView
+import com.av.urbanway.presentation.components.ChatDraggableSheet
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.heightIn
@@ -91,6 +97,12 @@ fun HomePage(
     // Track the last expandable message for fullscreen button
     var lastExpandableMessage by remember { mutableStateOf("") } // "arrivals", "map", etc.
 
+    // Draggable Sheet State (always visible)
+    var sheetHeightFraction by remember { mutableStateOf(0.12f) } // compact header visible
+    var sheetContentType by remember { mutableStateOf("") } // Empty at start
+    var isDraggable by remember { mutableStateOf(true) }
+    var showDraggableSheet by remember { mutableStateOf(true) } // Deprecated: sheet is always visible
+
     // Golden rule: Reset function to clear all subsequent states
     fun resetToLevel(level: Int) {
         when (level) {
@@ -113,6 +125,8 @@ fun HomePage(
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                // Keep the sheet compact and visible
+                sheetHeightFraction = 0.12f
                 viewModel.closeInlineJourneyResults()
             }
             1 -> { // Reset from first level choices (after greeting)
@@ -128,6 +142,8 @@ fun HomePage(
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                // Keep the sheet compact and visible
+                sheetHeightFraction = 0.12f
                 viewModel.closeInlineJourneyResults()
             }
             2 -> { // Reset from second level choices (after arrivals)
@@ -141,6 +157,8 @@ fun HomePage(
                 bottomSheetContent = ""
                 lastUserChoice = ""
                 lastExpandableMessage = ""
+                // Keep the sheet compact and visible
+                sheetHeightFraction = 0.12f
                 viewModel.closeInlineJourneyResults()
             }
         }
@@ -162,19 +180,33 @@ fun HomePage(
         lastUserChoice = ""
     }
 
-    // Function to expand content to fullscreen
-    fun expandToFullscreen(contentType: String) {
+    // Function to show content in draggable sheet
+    fun showInDraggableSheet(contentType: String, heightFraction: Float = 0.5f) {
+        android.util.Log.d("URBANWAY_DEBUG", "showInDraggableSheet called with contentType: $contentType, heightFraction: $heightFraction")
+        sheetContentType = contentType
+        sheetHeightFraction = heightFraction
+        showDraggableSheet = true
+        isDraggable = true
+        android.util.Log.d("URBANWAY_DEBUG", "showDraggableSheet set to: $showDraggableSheet")
+
         when (contentType) {
             "arrivals" -> {
-                showBottomSheet = true
-                bottomSheetContent = "arrivals_detail"
                 lastUserChoice = "altreLinee"
             }
             "map" -> {
-                showBottomSheet = true
-                bottomSheetContent = "map_view"
                 lastUserChoice = "mappa"
             }
+            "pinned" -> {
+                lastUserChoice = "orari"
+            }
+        }
+    }
+
+    // Function to expand content to fullscreen (legacy for journey)
+    fun expandToFullscreen(contentType: String) {
+        when (contentType) {
+            "arrivals" -> showInDraggableSheet("arrivals", 0.9f)
+            "map" -> showInDraggableSheet("map", 0.9f)
             "journey" -> {
                 // Expand inline instead of opening sheet
                 isJourneyExpanded = true
@@ -182,12 +214,13 @@ fun HomePage(
         }
     }
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
         // Always show greeting first
         if (showGreeting) {
             item {
@@ -200,6 +233,7 @@ fun HomePage(
                         scope.launch {
                             viewModel.loadNearbyData()
                         }
+                        // Just show in chat - keep draggable sheet visible
                     },
                     onMappaClick = {
                         resetToLevel(0)
@@ -321,20 +355,16 @@ fun HomePage(
                         },
                         onAltreLineeClick = {
                             userSelectedAltreLinee = true
-                            showBottomSheet = true
-                            bottomSheetContent = "arrivals_detail"
-                            lastUserChoice = "altreLinee"
+                            showInDraggableSheet("arrivals", 0.9f)
                         },
                         onOrariClick = {
                             userSelectedOrariFromArrivals = true
                             showDynamicArrivalsCard = true
-                            viewModel.showToast("Orari delle tue linee!")
+                            showInDraggableSheet("pinned", 0.5f)
                         },
                         onMappaClick = {
                             userSelectedMappaFromArrivals = true
-                            showBottomSheet = true
-                            bottomSheetContent = "map_view"
-                            lastUserChoice = "mappa"
+                            showInDraggableSheet("map", 0.9f)
                         },
                         isPreview = true // Show preview mode in chat
                     )
@@ -501,8 +531,8 @@ fun HomePage(
                 BotMessageContainer(
                     isLastMessage = true, // always show expand for this bubble
                     onExpandClick = {
-                        showBottomSheet = true
-                        bottomSheetContent = "journey_results"
+                        // Route the same content to the draggable sheet as detail
+                        showInDraggableSheet("journey_results", 0.9f)
                         lastUserChoice = "percorsi"
                     },
                     modifier = Modifier.fillMaxWidth()
@@ -520,11 +550,26 @@ fun HomePage(
             }
         }
 
-        // Legacy ArrivalsCards removed for chatbot experiment
-        // (API data flow and business logic preserved)
+            // Legacy ArrivalsCards removed for chatbot experiment
+            // (API data flow and business logic preserved)
+        }
+
+        // NEW: Draggable Sheet for real-time data
+        // Always-visible draggable sheet anchored to bottom
+        ChatDraggableSheet(
+            viewModel = viewModel,
+            currentHeightFraction = sheetHeightFraction,
+            onHeightChange = { newHeightFraction ->
+                sheetHeightFraction = newHeightFraction
+            },
+            contentType = sheetContentType,
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+        )
     }
 
-    // Unified Modal Dialog for all content
+    // OLD: Unified Modal Dialog for all content (keeping for journey results)
     if (showBottomSheet) {
         Box(
             modifier = Modifier

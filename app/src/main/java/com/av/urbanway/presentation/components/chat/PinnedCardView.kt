@@ -1,4 +1,4 @@
-package com.av.urbanway.presentation.components
+package com.av.urbanway.presentation.components.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable

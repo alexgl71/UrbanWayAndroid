@@ -1,4 +1,4 @@
-package com.av.urbanway.presentation.components
+package com.av.urbanway.presentation.components.chat
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +28,8 @@ import androidx.compose.ui.unit.sp
 import android.util.Log
 import com.av.urbanway.data.models.RoutesSummaryResponse
 import com.av.urbanway.presentation.viewmodels.MainViewModel
+import com.av.urbanway.presentation.components.ChatChoiceChip
+import com.av.urbanway.presentation.components.DestinationSuggestionsCard
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable

@@ -1,4 +1,4 @@
-package com.av.urbanway.presentation.components
+package com.av.urbanway.presentation.components.chat
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -24,6 +24,7 @@ import androidx.compose.ui.window.Dialog
 import com.av.urbanway.data.models.WaitingTime
 import com.av.urbanway.presentation.components.widgets.RouteBadge
 import com.av.urbanway.presentation.components.widgets.RouteInfoColumn
+import com.av.urbanway.presentation.components.ChatChoiceChip
 import android.util.Log
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
