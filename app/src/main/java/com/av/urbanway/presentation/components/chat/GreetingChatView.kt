@@ -40,33 +40,16 @@ fun GreetingChatView(
     onPlaceSelected: (com.av.urbanway.data.models.SearchResult) -> Unit, // pass full result
     destinationsData: RoutesSummaryResponse? = null,
     viewModel: MainViewModel? = null,
+    showActions: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var searchText by remember { mutableStateOf("") }
     var isSearchFocused by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    // Right-aligned bot message with left padding of 40px
-    Box(
-        modifier = modifier
-            .fillMaxWidth()
-            .padding(start = 40.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    Color.White.copy(alpha = 0.95f),
-                    RoundedCornerShape(
-                        topStart = 20.dp,
-                        topEnd = 20.dp,
-                        bottomStart = 20.dp,
-                        bottomEnd = 4.dp // Chat bubble style
-                    )
-                )
-                .padding(20.dp),
-            horizontalAlignment = Alignment.Start
-        ) {
+    // Container (padding handled by BotMessageCard/BotMessageContainer)
+    Box(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.fillMaxWidth(), horizontalAlignment = Alignment.Start) {
             // Greeting text - bot message style
             Text(
                 text = "Dove vuoi andare oggi?",
@@ -167,7 +150,7 @@ fun GreetingChatView(
             }
 
             // Only show "oppure:" text and choice chips when search is not focused
-            if (!isSearchFocused) {
+            if (!isSearchFocused && showActions) {
                 // "oppure:" text
                 Text(
                     text = "oppure:",

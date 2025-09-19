@@ -39,8 +39,10 @@ import com.av.urbanway.presentation.components.chat.UserMessageView
 import kotlinx.coroutines.launch
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.FlowRow
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun HomePage(
     viewModel: MainViewModel,
@@ -178,6 +180,12 @@ fun HomePage(
         lastUserChoice = ""
     }
 
+    fun collapseAndClearDraggableSheet() {
+        // Immediately collapse to min height and clear content
+        sheetHeightFraction = 0f
+        sheetContentType = ""
+    }
+
     // Function to show content in draggable sheet
     fun showInDraggableSheet(contentType: String, heightFraction: Float = 0.5f) {
         android.util.Log.d("URBANWAY_DEBUG", "showInDraggableSheet called with contentType: $contentType, heightFraction: $heightFraction")
@@ -211,62 +219,106 @@ fun HomePage(
         }
     }
 
+    // Revealable actions state (shared across chat list)
+    var revealedActionsFor by remember { mutableStateOf<String?>(null) }
+    var hideActionsJob by remember { mutableStateOf<kotlinx.coroutines.Job?>(null) }
+    fun toggleReveal(id: String) {
+        if (revealedActionsFor == id) {
+            revealedActionsFor = null
+            hideActionsJob?.cancel()
+            hideActionsJob = null
+        } else {
+            revealedActionsFor = id
+            hideActionsJob?.cancel()
+            hideActionsJob = scope.launch {
+                kotlinx.coroutines.delay(5000)
+                revealedActionsFor = null
+            }
+        }
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 100.dp)
         ) {
         // Always show greeting first
         if (showGreeting) {
             item {
-                GreetingChatView(
-                    onArriviClick = {
-                        resetToLevel(0)
-                        userSelectedArrivi = true
-                        showArriviView = true
-                        // Trigger API call when user selects "Arrivi"
-                        scope.launch {
-                            viewModel.loadNearbyData()
-                        }
-                        // Just show in chat - keep draggable sheet visible
-                    },
-                    onMappaClick = {
-                        resetToLevel(0)
-                        userSelectedMappa = true
-                        viewModel.showToast("Mappa - Coming soon!")
-                    },
-                    onSearchClick = {
-                        // Open the full search experience (SearchScreen)
-                        viewModel.openSearch()
-                    },
-                    onPlaceSelected = { result ->
-                        resetToLevel(0)
-                        userSelectedPlace = true
-                        selectedPlaceName = result.title
-                        showJourneyView = false // Quick Plan: go straight to results
-                        // Resolve FROM/TO, then auto-start inline journey search
-                        viewModel.prepareJourneyForChatWithResult(result)
-                        scope.launch {
-                            // Wait briefly for place details to resolve
-                            repeat(30) { // up to ~3s
-                                val s = viewModel.startLocation.value
-                                val e = viewModel.endLocation.value
-                                if (s != null && e != null) {
-                                    viewModel.startJourneySearchInline(
-                                        s.address, s.coordinates, e.address, e.coordinates
-                                    )
-                                    return@launch
-                                }
-                                kotlinx.coroutines.delay(100)
+                com.av.urbanway.presentation.components.chat.BotMessageCard(
+                    messageId = "greeting_bot",
+                    isLastMessage = true,
+                    onExpandClick = null,
+                    actions = listOf(
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "arrivi",
+                            label = "🚌 Arrivi",
+                            onInvoke = {
+                                resetToLevel(0)
+                                userSelectedArrivi = true
+                                showArriviView = true
+                                scope.launch { viewModel.loadNearbyData() }
                             }
-                        }
-                    },
-                    destinationsData = null, // You can pass actual data here when available
-                    viewModel = viewModel,
+                        ),
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "mappa",
+                            label = "🗺️ Mappa",
+                            onInvoke = {
+                                // Mirror Arrivals -> Mappa behavior from Greeting: clear from root and show map pair
+                                collapseAndClearDraggableSheet()
+                                resetToLevel(0)
+                                userSelectedMappaFromArrivals = true
+                            }
+                        )
+                    ),
+                    lastUpdatedEpochMillis = System.currentTimeMillis(),
+                    isLoading = false,
                     modifier = Modifier.fillMaxWidth()
-                )
+                ) {
+                    GreetingChatView(
+                        onArriviClick = {
+                            resetToLevel(0)
+                            userSelectedArrivi = true
+                            showArriviView = true
+                            scope.launch { viewModel.loadNearbyData() }
+                        },
+                        onMappaClick = {
+                            resetToLevel(0)
+                            userSelectedMappa = true
+                            viewModel.showToast("Mappa - Coming soon!")
+                        },
+                        onSearchClick = {
+                            viewModel.openSearch()
+                        },
+                        onPlaceSelected = { result ->
+                            resetToLevel(0)
+                            userSelectedPlace = true
+                            selectedPlaceName = result.title
+                            showJourneyView = false
+                            viewModel.prepareJourneyForChatWithResult(result)
+                            scope.launch {
+                                repeat(30) {
+                                    val s = viewModel.startLocation.value
+                                    val e = viewModel.endLocation.value
+                                    if (s != null && e != null) {
+                                        viewModel.startJourneySearchInline(
+                                            s.address, s.coordinates, e.address, e.coordinates
+                                        )
+                                        return@launch
+                                    }
+                                    kotlinx.coroutines.delay(100)
+                                }
+                            }
+                        },
+                        destinationsData = null,
+                        viewModel = viewModel,
+                        showActions = false,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
             }
         }
 
@@ -283,6 +335,7 @@ fun HomePage(
                             viewModel.loadNearbyData()
                         }
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -295,10 +348,26 @@ fun HomePage(
                     onClick = {
                         resetToLevel(1)
                         userSelectedMappa = true
-                        viewModel.showToast("Mappa - Coming soon!")
+                        // Keep subtle feedback if needed
+                        viewModel.showToast("Mappa")
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+            // Show a preview bubble for map with expand
+            item {
+                lastExpandableMessage = "map"
+                BotMessageContainer(
+                    isLastMessage = true,
+                    onExpandClick = { showInDraggableSheet("map", 0.9f) },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    com.av.urbanway.presentation.components.chat.MapChatView(
+                        viewModel = viewModel,
+                        isPreview = true
+                    )
+                }
             }
         }
 
@@ -310,6 +379,7 @@ fun HomePage(
                         // Open the full search experience (SearchScreen)
                         viewModel.openSearch()
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -324,6 +394,7 @@ fun HomePage(
                         userSelectedPlace = true
                         viewModel.showToast("Place: $selectedPlaceName")
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -335,9 +406,33 @@ fun HomePage(
             lastExpandableMessage = "arrivals"
 
             item {
-                BotMessageContainer(
+                com.av.urbanway.presentation.components.chat.BotMessageCard(
+                    messageId = "arrivals_bot",
                     isLastMessage = lastExpandableMessage == "arrivals",
                     onExpandClick = { expandToFullscreen("arrivals") },
+                    actions = listOf(
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "altre_linee",
+                            label = "🚌 Altre linee",
+                            onInvoke = {
+                                collapseAndClearDraggableSheet()
+                                resetToLevel(2)
+                                userSelectedAltreLinee = true
+                                showInDraggableSheet("arrivals", 0.9f)
+                            }
+                        ),
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "mappa",
+                            label = "🗺️ Mappa",
+                            onInvoke = {
+                                collapseAndClearDraggableSheet()
+                                resetToLevel(2)
+                                userSelectedMappaFromArrivals = true
+                            }
+                        )
+                    ),
+                    lastUpdatedEpochMillis = System.currentTimeMillis(),
+                    isLoading = false,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     ArrivalsChatView(
@@ -350,20 +445,11 @@ fun HomePage(
                         onUnpin = { routeId, destination, stopId ->
                             viewModel.removePinnedArrival(routeId, destination, stopId)
                         },
-                        onAltreLineeClick = {
-                            userSelectedAltreLinee = true
-                            showInDraggableSheet("arrivals", 0.9f)
-                        },
-                        onOrariClick = {
-                            userSelectedOrariFromArrivals = true
-                            showDynamicArrivalsCard = true
-                            showInDraggableSheet("pinned", 0.5f)
-                        },
-                        onMappaClick = {
-                            userSelectedMappaFromArrivals = true
-                            showInDraggableSheet("map", 0.9f)
-                        },
-                        isPreview = true // Show preview mode in chat
+                        onAltreLineeClick = { /* handled via reveal actions */ },
+                        onOrariClick = { /* removed: use expand button */ },
+                        onMappaClick = { /* handled via reveal actions */ },
+                        isPreview = true, // Show preview mode in chat
+                        userCoordinates = currentLocation?.coordinates
                     )
                 }
             }
@@ -408,12 +494,46 @@ fun HomePage(
                     onClick = {
                         resetToLevel(2)
                         userSelectedMappaFromArrivals = true
-                        showBottomSheet = true
-                        bottomSheetContent = "map_view"
-                        lastUserChoice = "mappa"
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
+            }
+            val coords = currentLocation?.coordinates ?: com.av.urbanway.data.models.Coordinates(
+                com.av.urbanway.data.local.GoogleMapsConfig.TURIN_LAT,
+                com.av.urbanway.data.local.GoogleMapsConfig.TURIN_LNG
+            )
+            run {
+                lastExpandableMessage = "map_inline"
+                item {
+                    com.av.urbanway.presentation.components.chat.BotMessageCard(
+                        messageId = "map_inline_bot",
+                        isLastMessage = lastExpandableMessage == "map_inline",
+                        onExpandClick = { showInDraggableSheet("map", 0.92f) },
+                        actions = listOf(
+                            com.av.urbanway.presentation.components.chat.BotAction(
+                                id = "open_map",
+                                label = "Apri mappa",
+                                onInvoke = {
+                                    // Keep prior context; just open map in sheet
+                                    collapseAndClearDraggableSheet()
+                                    showInDraggableSheet("map", 0.92f)
+                                }
+                            )
+                        ),
+                        lastUpdatedEpochMillis = System.currentTimeMillis(),
+                        isLoading = false,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        com.av.urbanway.presentation.components.StaticMapThumbnail(
+                            coords = coords,
+                            width = 640,
+                            heightPx = 360,
+                            zoom = 19,
+                            imageHeight = 260.dp
+                        )
+                    }
+                }
             }
         }
 
@@ -423,9 +543,19 @@ fun HomePage(
             lastExpandableMessage = "pinned"
 
             item {
-                BotMessageContainer(
+                com.av.urbanway.presentation.components.chat.BotMessageCard(
+                    messageId = "pinned_bot",
                     isLastMessage = lastExpandableMessage == "pinned",
                     onExpandClick = { expandToFullscreen("map") },
+                    actions = listOf(
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "open_map",
+                            label = "Apri mappa",
+                            onInvoke = { expandToFullscreen("map") }
+                        )
+                    ),
+                    lastUpdatedEpochMillis = System.currentTimeMillis(),
+                    isLoading = false,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     PinnedCardView(
@@ -475,9 +605,13 @@ fun HomePage(
                 lastExpandableMessage = "journey"
 
                 item {
-                    BotMessageContainer(
+                    com.av.urbanway.presentation.components.chat.BotMessageCard(
+                        messageId = "journey_planner_bot",
                         isLastMessage = lastExpandableMessage == "journey",
                         onExpandClick = { isJourneyExpanded = true },
+                        actions = emptyList(),
+                        lastUpdatedEpochMillis = System.currentTimeMillis(),
+                        isLoading = false,
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         // Inline Journey Planner (chat) - expands inline, not in sheet
@@ -515,6 +649,7 @@ fun HomePage(
                             )
                         }
                     },
+                    
                     modifier = Modifier.fillMaxWidth()
                 )
             }
@@ -525,13 +660,27 @@ fun HomePage(
             lastExpandableMessage = "journey_results"
 
             item {
-                BotMessageContainer(
-                    isLastMessage = true, // always show expand for this bubble
+                com.av.urbanway.presentation.components.chat.BotMessageCard(
+                    messageId = "journey_results_bot",
+                    isLastMessage = true,
                     onExpandClick = {
-                        // Route the same content to the draggable sheet as detail
                         showInDraggableSheet("journey_results", 0.9f)
                         lastUserChoice = "percorsi"
                     },
+                    actions = listOf(
+                        com.av.urbanway.presentation.components.chat.BotAction(
+                            id = "open_results",
+                            label = "Mostra dettagli",
+                            onInvoke = {
+                                collapseAndClearDraggableSheet()
+                                viewModel.closeInlineJourneyResults()
+                                showInDraggableSheet("journey_results", 0.9f)
+                                lastUserChoice = "percorsi"
+                            }
+                        )
+                    ),
+                    lastUpdatedEpochMillis = System.currentTimeMillis(),
+                    isLoading = isLoadingJourneys,
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     InlineJourneyResultsCard(
@@ -639,15 +788,10 @@ fun HomePage(
                                                 // In detail mode, this shows route circles
                                                 viewModel.showToast("Route circles shown!")
                                             },
-                                            onOrariClick = {
-                                                showDynamicArrivalsCard = true
-                                                dismissBottomSheet()
-                                                viewModel.showToast("Orari delle tue linee!")
-                                            },
-                                            onMappaClick = {
-                                                viewModel.showToast("Mappa degli arrivi - Coming soon!")
-                                            },
-                                            isPreview = false // Show detail mode in modal
+                                            onOrariClick = { },
+                                            onMappaClick = { },
+                                            isPreview = false, // Show detail mode in modal
+                                            userCoordinates = currentLocation?.coordinates
                                         )
                                     }
                                 }

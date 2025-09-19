@@ -1,6 +1,7 @@
 package com.av.urbanway.presentation.components.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,9 @@ import androidx.compose.ui.unit.dp
 fun BotMessageContainer(
     isLastMessage: Boolean = false,
     onExpandClick: (() -> Unit)? = null,
+    onBodyClick: (() -> Unit)? = null,
+    showActions: Boolean = false,
+    actions: (@Composable () -> Unit)? = null,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit
 ) {
@@ -37,14 +41,19 @@ fun BotMessageContainer(
                         bottomEnd = 4.dp // Chat bubble style
                     )
                 )
+                .then(if (onBodyClick != null) Modifier.clickable { onBodyClick() } else Modifier)
         ) {
             // Content area
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(20.dp)
             ) {
-                content()
+                Box(Modifier.fillMaxWidth()) { content() }
+                if (showActions && actions != null) {
+                    Spacer(Modifier.height(12.dp))
+                    actions()
+                }
             }
 
             // Fullscreen button in top right corner - only for last message

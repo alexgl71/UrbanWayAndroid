@@ -68,19 +68,29 @@ fun ChatDetailSheet(
             val f = requestedHeightFraction
             if (f != null) {
                 val frac = f.coerceIn(0f, 1f)
-                val h = (minHeightDp + (maxHeightDp - minHeightDp) * frac).coerceIn(minHeightDp, maxHeightDp)
-                // Animate only for this programmatic change
-                animateProgrammatic = true
-                currentHeight = h
-                // Start deferred reveal for scenic effect; reveal at TOP
-                deferContent = true
-                contentInserted = false
-                minSpinnerElapsed = false
-                programmaticTargetHeight = h
-                // Ensure spinner is visible long enough for a scenic feel
-                launch {
-                    delay(320)
-                    minSpinnerElapsed = true
+                if (frac <= 0.001f) {
+                    // Immediate collapse to minimum height without spinner
+                    animateProgrammatic = false
+                    currentHeight = minHeightDp
+                    deferContent = false
+                    contentInserted = false
+                    minSpinnerElapsed = false
+                    programmaticTargetHeight = null
+                } else {
+                    val h = (minHeightDp + (maxHeightDp - minHeightDp) * frac).coerceIn(minHeightDp, maxHeightDp)
+                    // Animate only for this programmatic change
+                    animateProgrammatic = true
+                    currentHeight = h
+                    // Start deferred reveal for scenic effect; reveal at TOP
+                    deferContent = true
+                    contentInserted = false
+                    minSpinnerElapsed = false
+                    programmaticTargetHeight = h
+                    // Ensure spinner is visible long enough for a scenic feel
+                    launch {
+                        delay(320)
+                        minSpinnerElapsed = true
+                    }
                 }
                 onHeightFractionApplied?.invoke()
             }
@@ -204,32 +214,40 @@ fun ChatDetailSheet(
                             modifier = Modifier.fillMaxSize(),
                             contentAlignment = Alignment.Center
                         ) {
-                            androidx.compose.material3.CircularProgressIndicator(strokeWidth = 2.dp)
+                            com.av.urbanway.presentation.components.LoadingWheelIndicator(
+                                indicatorSize = 42.dp,
+                                dotCount = 12,
+                                dotSize = 5.dp,
+                                color = Color(0xFF0B3D91)
+                            )
                         }
                     } else {
                         if (!contentInserted) {
+                            // Reveal content: stop treating sheet as animating for map overlays
                             contentInserted = true
                             deferContent = false
+                            animateProgrammatic = false
                         }
                         when (contentType) {
                             "arrivals" -> {
                                 val nearbyStops by viewModel.nearbyStops.collectAsState()
                                 val pinnedArrivals by viewModel.pinnedArrivals.collectAsState()
-                                ArrivalsChatView(
-                                    waitingTimes = viewModel.locationCardWaitingTimes,
-                                            nearbyStops = nearbyStops,
-                                            pinnedArrivals = pinnedArrivals,
-                                            onPin = { routeId, destination, stopId, stopName ->
-                                                viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
-                                            },
-                                            onUnpin = { routeId, destination, stopId ->
-                                                viewModel.removePinnedArrival(routeId, destination, stopId)
-                                            },
-                                            onAltreLineeClick = {},
-                                            onOrariClick = {},
-                                            onMappaClick = {},
-                                            isPreview = false
-                                        )
+                            ArrivalsChatView(
+                                waitingTimes = viewModel.locationCardWaitingTimes,
+                                nearbyStops = nearbyStops,
+                                pinnedArrivals = pinnedArrivals,
+                                onPin = { routeId, destination, stopId, stopName ->
+                                    viewModel.addPinnedArrival(routeId, destination, stopId, stopName)
+                                },
+                                onUnpin = { routeId, destination, stopId ->
+                                    viewModel.removePinnedArrival(routeId, destination, stopId)
+                                },
+                                onAltreLineeClick = {},
+                                onOrariClick = {},
+                                onMappaClick = {},
+                                isPreview = false,
+                                userCoordinates = viewModel.currentLocation.collectAsState().value?.coordinates
+                            )
                                     }
                                     "journey_results" -> {
                                         val journeys by viewModel.journeys.collectAsState()
@@ -259,18 +277,14 @@ fun ChatDetailSheet(
                                             }
                                         }
                                     }
-                                    "map" -> {
-                                        Box(
-                                            modifier = Modifier.fillMaxSize(),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "Mappa (in arrivo)",
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                color = Color.Gray
-                                            )
-                                        }
-                                    }
+                            "map" -> {
+                                com.av.urbanway.presentation.components.chat.MapChatView(
+                                    viewModel = viewModel,
+                                    isPreview = false,
+                                    isSheetAnimating = animateProgrammatic,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
                             else -> {
                                 // Empty or unknown content
                                 Box(

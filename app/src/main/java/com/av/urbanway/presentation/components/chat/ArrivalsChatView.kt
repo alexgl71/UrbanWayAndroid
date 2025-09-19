@@ -28,11 +28,12 @@ import androidx.compose.ui.window.Dialog
 import com.av.urbanway.data.models.WaitingTime
 import com.av.urbanway.presentation.components.widgets.RouteBadge
 import com.av.urbanway.presentation.components.widgets.RouteInfoColumn
-import com.av.urbanway.presentation.components.ChatChoiceChip
+// Chips are now revealed by tapping bot messages (see BotMessageContainer). No local chips here.
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.av.urbanway.data.models.Coordinates
 
 // Lightweight, precomputed item for pinned rows in detail mode
 private data class PinnedDetailData(
@@ -56,6 +57,8 @@ fun ArrivalsChatView(
     onOrariClick: () -> Unit = {},
     onMappaClick: () -> Unit = {},
     isPreview: Boolean = false,
+    userCoordinates: Coordinates? = null,
+    onSetExpandTarget: (String?) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     // State for popup
@@ -90,6 +93,7 @@ fun ArrivalsChatView(
     }
 
     // Only show if there are routes or pinned arrivals
+    var showMapPreview by remember { mutableStateOf(false) }
     if (routeIds.isNotEmpty() || pinnedArrivals.isNotEmpty()) {
         if (isPreview) {
             // PREVIEW MODE: Clean content without container styling
@@ -128,16 +132,7 @@ fun ArrivalsChatView(
                         )
                     }
 
-                    // Choice chips for preview
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        ChatChoiceChip(text = "📋 Dettagli", onClick = onAltreLineeClick)
-                        ChatChoiceChip(text = "📅 Orari", onClick = onOrariClick)
-                        ChatChoiceChip(text = "🗺️ Mappa", onClick = onMappaClick)
-                    }
+                    // Actions are revealed by tapping the bot message; no inline chips here
                 }
         } else {
             // DETAIL MODE: Use LazyColumn to keep layout stable under sheet height changes
@@ -241,22 +236,7 @@ fun ArrivalsChatView(
                     }
                 }
 
-                item(key = "chips") {
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (routeIds.isNotEmpty() && !showRouteCircles) {
-                            ChatChoiceChip(
-                                text = "🚌 Altre linee",
-                                onClick = { showRouteCircles = true; onAltreLineeClick() }
-                            )
-                        }
-                        ChatChoiceChip(text = "📅 Orari", onClick = onOrariClick)
-                        ChatChoiceChip(text = "🗺️ Mappa", onClick = onMappaClick)
-                    }
-                }
+                // No inline chips in detail mode; actions are revealed by tapping the bot message
             }
         }
     }
@@ -342,6 +322,8 @@ private fun PinnedDetailRow(
         }
     }
 }
+
+// Static map thumbnail extracted to components/StaticMapThumbnail.kt
 
 @Composable
 private fun RouteCircle(

@@ -12,6 +12,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Refresh
 
 @Composable
 fun UserMessageView(
@@ -25,7 +27,7 @@ fun UserMessageView(
             .fillMaxWidth()
             .padding(end = 40.dp)
     ) {
-        Box(
+        Row(
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .background(
@@ -44,7 +46,8 @@ fun UserMessageView(
                         Modifier
                     }
                 )
-                .padding(horizontal = 16.dp, vertical = 12.dp)
+                .padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
                 text = message,
@@ -54,6 +57,7 @@ fun UserMessageView(
                 ),
                 color = Color.White
             )
+            
         }
     }
 }
