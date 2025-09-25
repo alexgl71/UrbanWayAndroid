@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -16,6 +17,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.av.urbanway.data.model.*
 import com.av.urbanway.data.parser.QueryParser
 import com.av.urbanway.data.repository.ChatRepository
@@ -39,14 +41,23 @@ fun ChatScreen() {
 
     // Start with empty chat - let user type first
 
-    Box(
+    // LazyList state for scrolling control
+    val listState = rememberLazyListState()
+
+    // Auto-scroll to bottom when new messages arrive
+    LaunchedEffect(messages.size) {
+        if (messages.isNotEmpty()) {
+            listState.animateScrollToItem(messages.size - 1)
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF1A1A2E)) // Dark background like screenshot
+            .statusBarsPadding() // Handle status bar
+            .imePadding() // Handle keyboard
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize()
-        ) {
             // Header - exactly like screenshot
             Row(
                 modifier = Modifier
@@ -90,9 +101,11 @@ fun ChatScreen() {
 
             // Chat messages
             LazyColumn(
+                state = listState,
                 modifier = Modifier
                     .weight(1f)
-                    .padding(top = 8.dp),
+                    .fillMaxWidth(),
+                contentPadding = PaddingValues(vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 items(messages.filter { message ->
@@ -148,6 +161,10 @@ fun ChatScreen() {
                                     scope.launch {
                                         chatService.handleUserInput(userInput)
                                         userInput = ""
+                                        // Scroll to bottom after sending
+                                        if (messages.isNotEmpty()) {
+                                            listState.animateScrollToItem(messages.size)
+                                        }
                                     }
                                 }
                             }
@@ -179,7 +196,6 @@ fun ChatScreen() {
                 }
             }
         }
-    }
 }
 
 @Composable
