@@ -13,7 +13,7 @@ UrbanWay is a **conversational Android app** for Turin's public transport system
 - **Language**: Kotlin
 - **UI Framework**: Jetpack Compose (Material 3)
 - **Architecture**: MVVM with Repository Pattern
-- **Minimum SDK**: 24 (Android 7.0)
+- **Minimum SDK**: 34 (Android 14)
 - **Target SDK**: 36 (Latest)
 
 ### Key Features Implemented
