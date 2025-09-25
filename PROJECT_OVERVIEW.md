@@ -1,5 +1,8 @@
 # UrbanWay - Turin Public Transport Assistant
 
+![Android CI](https://github.com/YOUR_USERNAME/UrbanWayAndroid/workflows/Android%20CI/badge.svg)
+![Release](https://github.com/YOUR_USERNAME/UrbanWayAndroid/workflows/Release%20Build/badge.svg)
+
 ## Project Overview
 
 UrbanWay is a **conversational Android app** for Turin's public transport system, built from scratch using modern Android development practices. The app provides an intelligent chat interface that helps users get real-time transport information through natural language queries.
