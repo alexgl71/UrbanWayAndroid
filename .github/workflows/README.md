@@ -8,7 +8,7 @@ This directory contains the CI/CD workflows for UrbanWay Android app.
 **Triggers:** Push to `main`/`develop` branches, Pull Requests to `main`
 
 **What it does:**
-- ✅ Sets up JDK 11 and Android SDK
+- ✅ Sets up JDK 17 and Android SDK
 - ✅ Caches Gradle dependencies for faster builds
 - ✅ Runs lint checks to catch code quality issues
 - ✅ Executes unit tests
