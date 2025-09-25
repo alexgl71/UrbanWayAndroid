@@ -39,7 +39,12 @@ class ChatService(
 
     private fun handleNearbyQuery(userInput: String) {
         val nearbyData = dataService.getNearbyArrivals()
-        val botResponse = "Ho trovato ${nearbyData.arrivals.size} arrivi nelle vicinanze da ${nearbyData.stops.size} fermate"
+
+        // Count unique routes from arrivals
+        val uniqueRoutes = nearbyData.arrivals.map { it.routeName }.toSet().size
+        val totalStops = nearbyData.stops.size
+
+        val botResponse = "Da qui passano $uniqueRoutes linee e hai $totalStops fermate disponibili"
 
         chatRepository.addBotMessage(
             content = botResponse,

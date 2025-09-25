@@ -6,6 +6,11 @@ import java.time.format.DateTimeFormatter
 
 class HardcodedDataService {
 
+    // Default user location - Piazza Adriano
+    fun getUserLocation(): Location {
+        return Location(45.071542060347255, 7.6548553701378355, "Piazza Adriano")
+    }
+
     fun getNearbyArrivals(): TransitData.NearbyData {
         return TransitData.NearbyData(
             stops = getNearbyStops(),
@@ -18,31 +23,31 @@ class HardcodedDataService {
             Stop(
                 id = "3207",
                 name = "Fermata 595 - ADRIANO",
-                location = Location(45.072730, 7.655860),
+                location = Location(45.071542060347255, 7.6548553701378355, "Piazza Adriano"),
                 routes = listOf("16CDU", "56U", "9U")
             ),
             Stop(
                 id = "3430",
                 name = "Fermata 646 - ADRIANO",
-                location = Location(45.072460, 7.655660),
+                location = Location(45.072460, 7.655660, "Piazza Adriano"),
                 routes = listOf("16CSU", "56U", "9U")
             ),
             Stop(
                 id = "2501",
                 name = "Fermata 3286 - FERRUCCI",
-                location = Location(45.071020, 7.656040),
+                location = Location(45.071020, 7.656040, "Piazza Adriano"),
                 routes = listOf("55U", "68U", "9U")
             ),
             Stop(
                 id = "2502",
                 name = "Fermata 3287 - FERRUCCI",
-                location = Location(45.070720, 7.656530),
+                location = Location(45.070720, 7.656530, "Piazza Adriano"),
                 routes = listOf("55U", "68U", "9U")
             ),
             Stop(
                 id = "598",
                 name = "Fermata 1532 - CAVALLI",
-                location = Location(45.073070, 7.656980),
+                location = Location(45.073070, 7.656980, "Piazza Adriano"),
                 routes = listOf("56U")
             )
         )
