@@ -46,6 +46,9 @@ class ChatService(
 
         val botResponse = "Da qui passano $uniqueRoutes linee e hai $totalStops fermate disponibili"
 
+        // Compact all previous messages before adding new BOT message
+        chatRepository.compactAllPreviousMessages()
+
         chatRepository.addBotMessage(
             content = botResponse,
             queryType = QueryType.NEARBY,
