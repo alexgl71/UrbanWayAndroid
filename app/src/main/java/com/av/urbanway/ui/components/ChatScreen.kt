@@ -4,7 +4,10 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -33,6 +36,13 @@ fun ChatScreen() {
 
     val scope = rememberCoroutineScope()
 
+    // Initialize with the conversation from screenshot if empty
+    LaunchedEffect(Unit) {
+        if (messages.isEmpty()) {
+            chatService.handleUserInput("Quali sono le linee che passano vicino a me?")
+        }
+    }
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -41,24 +51,41 @@ fun ChatScreen() {
         Column(
             modifier = Modifier.fillMaxSize()
         ) {
-            // Header
-            Surface(
-                color = Color(0xFF1A1A2E),
-                modifier = Modifier.fillMaxWidth()
+            // Header - exactly like screenshot
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                // App icon
+                Surface(
+                    modifier = Modifier.size(40.dp),
+                    shape = CircleShape,
+                    color = Color.White
                 ) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "🚌",
+                            fontSize = 20.sp
+                        )
+                    }
+                }
+
+                Spacer(modifier = Modifier.width(12.dp))
+
+                Column {
                     Text(
                         text = "Assistente UrbanWay",
                         color = Color.White,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Medium
                     )
-                    Spacer(modifier = Modifier.weight(1f))
                     Text(
-                        text = "Online • ${messages.size / 3} conversazioni",
+                        text = "Online • 1 conversazioni",
                         color = Color.Gray,
                         fontSize = 12.sp
                     )
@@ -92,49 +119,51 @@ fun ChatScreen() {
                 }
             }
 
-            // Input field
-            Surface(
-                color = Color(0xFF1A1A2E),
-                modifier = Modifier.fillMaxWidth()
+            // Bottom input field - exactly like screenshot
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    OutlinedTextField(
-                        value = userInput,
-                        onValueChange = { userInput = it },
-                        placeholder = { Text("Chiedimi qualcosa sui trasporti...", color = Color.Gray) },
-                        modifier = Modifier.weight(1f),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White,
-                            focusedBorderColor = Color.Gray,
-                            unfocusedBorderColor = Color.Gray
-                        ),
-                        shape = RoundedCornerShape(25.dp)
-                    )
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        onClick = {
-                            if (userInput.isNotBlank()) {
-                                scope.launch {
-                                    chatService.handleUserInput(userInput)
-                                    userInput = ""
+                OutlinedTextField(
+                    value = userInput,
+                    onValueChange = { userInput = it },
+                    placeholder = {
+                        Text(
+                            "Chiedimi qualcosa sui trasporti...",
+                            color = Color.Gray
+                        )
+                    },
+                    modifier = Modifier.weight(1f),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedTextColor = Color.Black,
+                        unfocusedTextColor = Color.Black,
+                        focusedContainerColor = Color.White,
+                        unfocusedContainerColor = Color.White,
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent
+                    ),
+                    shape = RoundedCornerShape(25.dp),
+                    trailingIcon = {
+                        IconButton(
+                            onClick = {
+                                if (userInput.isNotBlank()) {
+                                    scope.launch {
+                                        chatService.handleUserInput(userInput)
+                                        userInput = ""
+                                    }
                                 }
                             }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4CAF50)
-                        )
-                    ) {
-                        Text("Invia", color = Color.White)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Send,
+                                contentDescription = "Send",
+                                tint = Color.Gray
+                            )
+                        }
                     }
-                }
+                )
             }
         }
 
