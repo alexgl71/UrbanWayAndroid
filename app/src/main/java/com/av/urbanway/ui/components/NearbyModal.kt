@@ -74,8 +74,10 @@ fun NearbyModal(
                     }
                 }
 
-                // Group arrivals by route for display
-                val groupedArrivals = data.arrivals.groupBy { it.routeName }
+                // Group arrivals by routeId first, then by headsign/direction
+                val groupedByRoute = data.arrivals.groupBy {
+                    it.routeName.filter { char -> char.isDigit() } // Extract route number
+                }
 
                 LazyColumn(
                     modifier = Modifier
@@ -84,9 +86,9 @@ fun NearbyModal(
                         .padding(horizontal = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    items(groupedArrivals.entries.toList()) { (routeName, arrivals) ->
+                    items(groupedByRoute.entries.toList()) { (routeNumber, arrivals) ->
                         RouteCard(
-                            routeName = routeName,
+                            routeNumber = routeNumber,
                             arrivals = arrivals
                         )
                     }
@@ -117,7 +119,7 @@ fun NearbyModal(
 
 @Composable
 private fun RouteCard(
-    routeName: String,
+    routeNumber: String,
     arrivals: List<Arrival>
 ) {
     Card(
@@ -131,11 +133,10 @@ private fun RouteCard(
                 .padding(16.dp)
         ) {
             Row(
-                verticalAlignment = Alignment.CenterVertically,
+                verticalAlignment = Alignment.Top,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 // Route number circle
-                val routeNumber = routeName.filter { it.isDigit() }
                 Box(
                     modifier = Modifier
                         .size(32.dp)
@@ -153,30 +154,31 @@ private fun RouteCard(
 
                 Spacer(modifier = Modifier.width(12.dp))
 
-                // Route destinations
-                Column {
-                    // Group by direction to show different destinations
-                    val directions = arrivals.distinctBy { it.direction }
-                    directions.forEach { arrival ->
+                // Route destinations grouped by headsign
+                Column(modifier = Modifier.weight(1f)) {
+                    // Group by direction/headsign and show each one
+                    val groupedByDirection = arrivals.groupBy { it.direction }
+
+                    groupedByDirection.forEach { (direction, arrivalsForDirection) ->
+                        // Headsign title
                         Text(
-                            text = arrival.direction,
+                            text = direction,
                             color = Color.Black,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Medium
                         )
 
-                        // Show arrival times for this direction
-                        val timesForDirection = arrivals
-                            .filter { it.direction == arrival.direction }
-                            .sortedBy { it.realTimeMinutes }
-
+                        // Arrival time badges for this headsign
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                         ) {
-                            timesForDirection.take(3).forEach { arrival ->
-                                ArrivalTimeBadge(arrival.realTimeMinutes, arrival.isRealTime)
-                            }
+                            arrivalsForDirection
+                                .sortedBy { it.realTimeMinutes }
+                                .take(3)
+                                .forEach { arrival ->
+                                    ArrivalTimeBadge(arrival.realTimeMinutes, arrival.isRealTime)
+                                }
                         }
                     }
                 }

@@ -25,10 +25,11 @@ import kotlinx.coroutines.launch
 
 @Composable
 fun ChatScreen() {
-    val chatRepository = ChatRepository()
-    val queryParser = QueryParser()
-    val dataService = HardcodedDataService()
-    val chatService = ChatService(chatRepository, queryParser, dataService)
+    // Remember instances to prevent recreation on recomposition
+    val chatRepository = remember { ChatRepository() }
+    val queryParser = remember { QueryParser() }
+    val dataService = remember { HardcodedDataService() }
+    val chatService = remember { ChatService(chatRepository, queryParser, dataService) }
 
     val messages by chatRepository.messages.collectAsState()
     var userInput by remember { mutableStateOf("") }
@@ -36,12 +37,7 @@ fun ChatScreen() {
 
     val scope = rememberCoroutineScope()
 
-    // Initialize with the conversation from screenshot if empty
-    LaunchedEffect(Unit) {
-        if (messages.isEmpty()) {
-            chatService.handleUserInput("Quali sono le linee che passano vicino a me?")
-        }
-    }
+    // Start with empty chat - let user type first
 
     Box(
         modifier = Modifier
