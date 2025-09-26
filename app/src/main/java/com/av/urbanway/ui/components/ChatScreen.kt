@@ -190,6 +190,20 @@ fun ChatScreen() {
                     if (message.data is TransitData.NearbyData) {
                         NearbyModal(
                             data = message.data,
+                            onDismiss = { showModal = null },
+                            onRouteClick = { routeSelection ->
+                                // Close modal first
+                                showModal = null
+                                // Handle route selection via ChatService with full route info
+                                chatService.handleModalSelection(routeSelection, QueryType.NEARBY)
+                            }
+                        )
+                    }
+                }
+                QueryType.ROUTEDETAIL -> {
+                    if (message.data is TransitData.RouteDetailData) {
+                        RouteDetailModal(
+                            data = message.data,
                             onDismiss = { showModal = null }
                         )
                     }
@@ -257,6 +271,15 @@ private fun ChatMessageItem(
                 QueryType.NEARBY -> {
                     if (message.data is TransitData.NearbyData) {
                         NearbyBotCard(
+                            data = message.data,
+                            isCompact = message.isCompact,
+                            onViewDetails = onViewDetails
+                        )
+                    }
+                }
+                QueryType.ROUTEDETAIL -> {
+                    if (message.data is TransitData.RouteDetailData) {
+                        RouteDetailBotCard(
                             data = message.data,
                             isCompact = message.isCompact,
                             onViewDetails = onViewDetails

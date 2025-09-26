@@ -60,6 +60,54 @@ data class Stop(
     val routes: List<String>
 )
 
+// JSON API Response Models (matching the actual API structure)
+data class RouteDetailApiResponse(
+    val stops: List<ApiStop>,
+    val shapes: List<ApiShape>
+)
+
+data class ApiStop(
+    val stop_id: String,
+    val stop_code: String,
+    val stop_name: String,
+    val arrival_date: Int,
+    val stop_lat: Double,
+    val stop_lon: Double
+)
+
+data class ApiShape(
+    val shape_pt_lat: Double,
+    val shape_pt_lon: Double
+)
+
+// Nearby API Response Models (matching the actual nearby API structure)
+data class NearbyApiResponse(
+    val routes: List<ApiRoute>
+)
+
+data class ApiRoute(
+    val route_id: String,
+    val headsigns: List<ApiHeadsign>
+)
+
+data class ApiHeadsign(
+    val trip_headsign: String,
+    val stop_id: String,
+    val stop_name: String,
+    val distance_to_stop: Int,
+    val stop_lat: Double,
+    val stop_lon: Double,
+    val departures: List<ApiDeparture>
+)
+
+data class ApiDeparture(
+    val trip_id: String,
+    val actual_departure_time: String,
+    val wait_minutes: Int,
+    val has_realtime_update: Boolean
+)
+
+// Internal App Models (for UI)
 data class RouteStop(
     val stopId: String,
     val stopCode: String,
@@ -72,6 +120,14 @@ data class RouteStop(
 data class ShapePoint(
     val shapePtLat: Double,
     val shapePtLon: Double
+)
+
+data class RouteSelection(
+    val routeId: String,
+    val routeName: String,
+    val headsign: String,
+    val tripId: String,
+    val displayText: String // e.g., "56 - TABACCHI"
 )
 
 data class Route(
@@ -88,7 +144,8 @@ data class Arrival(
     val direction: String,
     val scheduledTime: LocalDateTime,
     val realTimeMinutes: Int,
-    val isRealTime: Boolean
+    val isRealTime: Boolean,
+    val tripId: String
 )
 
 data class Location(

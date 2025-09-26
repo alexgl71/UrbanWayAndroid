@@ -1,6 +1,7 @@
 package com.av.urbanway.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -20,12 +21,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.av.urbanway.data.model.Arrival
+import com.av.urbanway.data.model.RouteSelection
 import com.av.urbanway.data.model.TransitData
 
 @Composable
 fun NearbyModal(
     data: TransitData.NearbyData,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onRouteClick: (RouteSelection) -> Unit
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -89,7 +92,8 @@ fun NearbyModal(
                     items(groupedByRoute.entries.toList()) { (routeNumber, arrivals) ->
                         RouteCard(
                             routeNumber = routeNumber,
-                            arrivals = arrivals
+                            arrivals = arrivals,
+                            onRouteClick = onRouteClick
                         )
                     }
 
@@ -120,7 +124,8 @@ fun NearbyModal(
 @Composable
 private fun RouteCard(
     routeNumber: String,
-    arrivals: List<Arrival>
+    arrivals: List<Arrival>,
+    onRouteClick: (RouteSelection) -> Unit
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -160,25 +165,55 @@ private fun RouteCard(
                     val groupedByDirection = arrivals.groupBy { it.direction }
 
                     groupedByDirection.forEach { (direction, arrivalsForDirection) ->
-                        // Headsign title
-                        Text(
-                            text = direction,
-                            color = Color.Black,
-                            fontSize = 14.sp,
-                            fontWeight = FontWeight.Medium
-                        )
+                        // Make each headsign/direction clickable
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    // Get the first arrival for this direction to extract trip info
+                                    val firstArrival = arrivalsForDirection.firstOrNull()
+                                    if (firstArrival != null) {
+                                        // Extract destination from headsign
+                                        val destination = direction.split(",").firstOrNull()?.trim()
+                                        val displayText = if (destination != null) {
+                                            "$routeNumber - $destination"
+                                        } else {
+                                            "$routeNumber - $direction"
+                                        }
 
-                        // Arrival time badges for this headsign
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
-                        ) {
-                            arrivalsForDirection
-                                .sortedBy { it.realTimeMinutes }
-                                .take(3)
-                                .forEach { arrival ->
-                                    ArrivalTimeBadge(arrival.realTimeMinutes, arrival.isRealTime)
+                                        // Create RouteSelection with all required info
+                                        val routeSelection = RouteSelection(
+                                            routeId = firstArrival.routeId,
+                                            routeName = firstArrival.routeName,
+                                            headsign = direction,
+                                            tripId = firstArrival.tripId,
+                                            displayText = displayText
+                                        )
+                                        onRouteClick(routeSelection)
+                                    }
                                 }
+                                .padding(vertical = 4.dp)
+                        ) {
+                            // Headsign title
+                            Text(
+                                text = direction,
+                                color = Color.Black,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+
+                            // Arrival time badges for this headsign
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                            ) {
+                                arrivalsForDirection
+                                    .sortedBy { it.realTimeMinutes }
+                                    .take(3)
+                                    .forEach { arrival ->
+                                        ArrivalTimeBadge(arrival.realTimeMinutes, arrival.isRealTime)
+                                    }
+                            }
                         }
                     }
                 }
