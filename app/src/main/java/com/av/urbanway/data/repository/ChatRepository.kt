@@ -141,9 +141,6 @@ class ChatRepository {
             else -> generateBotContent(selectedItem, newQueryType)
         }
         addBotMessage(botContent, newQueryType, newData)
-
-        // Compact all previous messages after adding the new BOT message
-        compactAllPreviousMessages()
     }
 
     private fun generateBotContent(selection: String, queryType: QueryType): String {

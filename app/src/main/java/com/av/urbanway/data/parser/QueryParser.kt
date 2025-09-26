@@ -57,7 +57,7 @@ class QueryParser {
             QueryType.NEARBY -> "Arrivi nelle vicinanze"
             QueryType.ROUTEDETAIL -> {
                 val routeName = extractRouteName(input)
-                if (routeName != null) "Linea $routeName" else "Dettagli linea"
+                if (routeName != null) "$routeName" else "Dettagli linea"
             }
             QueryType.STOPDETAIL -> "Informazioni fermata"
             QueryType.JOURNEY -> {
