@@ -34,8 +34,8 @@ sealed class TransitData {
 
     data class RouteDetailData(
         val route: Route,
-        val stops: List<Stop>,
-        val realTimeUpdates: List<RealTimeUpdate>
+        val stops: List<RouteStop>,
+        val shapes: List<ShapePoint>
     ) : TransitData()
 
     data class StopDetailData(
@@ -58,6 +58,20 @@ data class Stop(
     val name: String,
     val location: Location,
     val routes: List<String>
+)
+
+data class RouteStop(
+    val stopId: String,
+    val stopCode: String,
+    val stopName: String,
+    val arrivalDate: Int,
+    val stopLat: Double,
+    val stopLon: Double
+)
+
+data class ShapePoint(
+    val shapePtLat: Double,
+    val shapePtLon: Double
 )
 
 data class Route(
