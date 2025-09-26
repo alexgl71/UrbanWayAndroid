@@ -1,6 +1,7 @@
 package com.av.urbanway.data.service
 
 import com.av.urbanway.data.model.QueryType
+import com.av.urbanway.data.model.RouteSelection
 import com.av.urbanway.data.parser.QueryParser
 import com.av.urbanway.data.repository.ChatRepository
 import java.time.LocalDateTime
