@@ -1,5 +1,6 @@
 package com.av.urbanway.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -20,18 +21,21 @@ import com.av.urbanway.data.service.HardcodedDataService
 fun NearbyBotCard(
     data: TransitData.NearbyData,
     isCompact: Boolean,
-    onViewDetails: () -> Unit = {}
+    onViewDetails: () -> Unit = {},
+    onTapCompact: () -> Unit = {}
 ) {
     val dataService = HardcodedDataService()
     val userLocation = dataService.getUserLocation()
 
     if (isCompact) {
-        // Compact template: just the address
+        // Compact template: clickable address
         Text(
             text = userLocation.address ?: "Piazza Adriano",
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier
+                .clickable { onTapCompact() }
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         )
     } else {
         // Expanded template: full card with button

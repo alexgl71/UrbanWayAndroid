@@ -1,6 +1,7 @@
 package com.av.urbanway.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -17,14 +18,16 @@ import com.av.urbanway.data.model.TransitData
 fun RouteDetailBotCard(
     data: TransitData.RouteDetailData,
     isCompact: Boolean,
-    onViewDetails: () -> Unit
+    onViewDetails: () -> Unit,
+    onTapCompact: () -> Unit = {}
 ) {
     if (isCompact) {
-        // Compact version - just the route info
+        // Compact version - clickable route info
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .clickable { onTapCompact() },
             colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50)),
             shape = RoundedCornerShape(12.dp)
         ) {

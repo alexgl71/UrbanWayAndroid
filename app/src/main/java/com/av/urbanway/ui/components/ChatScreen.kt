@@ -273,7 +273,8 @@ private fun ChatMessageItem(
                         NearbyBotCard(
                             data = message.data,
                             isCompact = message.isCompact,
-                            onViewDetails = onViewDetails
+                            onViewDetails = onViewDetails,
+                            onTapCompact = onViewDetails  // Same action as "Vedi i dettagli"
                         )
                     }
                 }
@@ -282,7 +283,8 @@ private fun ChatMessageItem(
                         RouteDetailBotCard(
                             data = message.data,
                             isCompact = message.isCompact,
-                            onViewDetails = onViewDetails
+                            onViewDetails = onViewDetails,
+                            onTapCompact = onViewDetails  // Same action as "Vedi i dettagli"
                         )
                     }
                 }
