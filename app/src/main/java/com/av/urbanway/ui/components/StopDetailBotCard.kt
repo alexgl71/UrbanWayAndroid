@@ -1,5 +1,6 @@
 package com.av.urbanway.ui.components
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -20,12 +21,14 @@ fun StopDetailBotCard(
     onTapCompact: () -> Unit = {}
 ) {
     if (isCompact) {
-        // Compact version - just the stop name
+        // Compact version - clickable stop name
         Text(
-            text = data.stop.stopName,
+            text = data.stop.name,
             color = MaterialTheme.colorScheme.onSurface,
             fontSize = 14.sp,
-            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+            modifier = Modifier
+                .clickable { onTapCompact() }
+                .padding(horizontal = 16.dp, vertical = 8.dp)
         )
     } else {
         // Expanded version with details button
@@ -45,7 +48,7 @@ fun StopDetailBotCard(
             ) {
                 // Stop name header
                 Text(
-                    text = data.stop.stopName,
+                    text = data.stop.name,
                     color = Color.Black,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Medium
