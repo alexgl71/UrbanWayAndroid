@@ -1,6 +1,7 @@
 package com.av.urbanway.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -26,7 +27,8 @@ import com.av.urbanway.data.model.TransitData
 @Composable
 fun RouteDetailModal(
     data: TransitData.RouteDetailData,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onStopClick: (RouteStop) -> Unit = {}
 ) {
     Dialog(
         onDismissRequest = onDismiss,
@@ -114,7 +116,8 @@ fun RouteDetailModal(
                         StopTimelineItem(
                             stop = stop,
                             isFirst = data.stops.first() == stop,
-                            isLast = data.stops.last() == stop
+                            isLast = data.stops.last() == stop,
+                            onStopClick = onStopClick
                         )
                     }
 
@@ -146,11 +149,13 @@ fun RouteDetailModal(
 private fun StopTimelineItem(
     stop: RouteStop,
     isFirst: Boolean,
-    isLast: Boolean
+    isLast: Boolean,
+    onStopClick: (RouteStop) -> Unit = {}
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .clickable { onStopClick(stop) }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {

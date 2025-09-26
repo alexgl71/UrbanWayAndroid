@@ -191,7 +191,13 @@ fun ChatScreen() {
                     if (message.data is TransitData.RouteDetailData) {
                         RouteDetailModal(
                             data = message.data,
-                            onDismiss = { showModal = null }
+                            onDismiss = { showModal = null },
+                            onStopClick = { stop ->
+                                // Close modal first
+                                showModal = null
+                                // Handle stop selection
+                                chatService.handleStopSelection(stop)
+                            }
                         )
                     }
                 }
@@ -268,6 +274,16 @@ private fun ChatMessageItem(
                 QueryType.ROUTEDETAIL -> {
                     if (message.data is TransitData.RouteDetailData) {
                         RouteDetailBotCard(
+                            data = message.data,
+                            isCompact = message.isCompact,
+                            onViewDetails = onViewDetails,
+                            onTapCompact = onViewDetails  // Same action as "Vedi i dettagli"
+                        )
+                    }
+                }
+                QueryType.STOPDETAIL -> {
+                    if (message.data is TransitData.StopDetailData) {
+                        StopDetailBotCard(
                             data = message.data,
                             isCompact = message.isCompact,
                             onViewDetails = onViewDetails,
