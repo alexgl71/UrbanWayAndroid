@@ -28,14 +28,14 @@ fun StopDetailBotCard(
             fontSize = 14.sp,
             modifier = Modifier
                 .clickable { onTapCompact() }
-                .padding(horizontal = 16.dp, vertical = 8.dp)
+                .padding(start = 16.dp, end = 70.dp, top = 8.dp, bottom = 8.dp)
         )
     } else {
         // Expanded version with details button
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 8.dp),
+                .padding(start = 16.dp, end = 70.dp, top = 8.dp, bottom = 8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = Color.White
             ),

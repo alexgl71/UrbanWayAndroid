@@ -23,34 +23,23 @@ fun RouteDetailBotCard(
 ) {
     if (isCompact) {
         // Compact version - clickable route info
-        Card(
+        Text(
+            text = "Linea ${data.route.name} ${data.route.direction}",
+            color = MaterialTheme.colorScheme.onSurface,
+            fontSize = 14.sp,
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .clickable { onTapCompact() },
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50)),
-            shape = RoundedCornerShape(12.dp)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(12.dp)
-            ) {
-                Text(
-                    text = "Linea ${data.route.name} ${data.route.direction}",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium
-                )
-            }
-        }
+                .clickable { onTapCompact() }
+                .padding(start = 16.dp, end = 70.dp, top = 8.dp, bottom = 8.dp)
+        )
     } else {
         // Full version with details button
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF2C3E50)),
+                .padding(start = 16.dp, end = 70.dp, top = 8.dp, bottom = 8.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = Color.White
+            ),
             shape = RoundedCornerShape(12.dp)
         ) {
             Column(
@@ -59,49 +48,44 @@ fun RouteDetailBotCard(
                     .padding(16.dp)
             ) {
                 // Route header
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "Linea ${data.route.name}",
-                            color = Color.White,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = data.route.direction,
-                            color = Color.Gray,
-                            fontSize = 14.sp
-                        )
-                    }
-                }
+                Text(
+                    text = "Linea ${data.route.name}",
+                    color = Color.Black,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Medium
+                )
+
+                Text(
+                    text = data.route.direction,
+                    color = Color.Black,
+                    fontSize = 16.sp
+                )
 
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Route info
                 Text(
                     text = "${data.stops.size} fermate totali",
-                    color = Color.White,
-                    fontSize = 14.sp
+                    color = Color.Black,
+                    fontSize = 16.sp
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(20.dp))
 
                 // View details button
-                OutlinedButton(
+                Button(
                     onClick = onViewDetails,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.outlinedButtonColors(
-                        contentColor = Color.White
+                    modifier = Modifier.align(Alignment.CenterHorizontally),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF2C3E50) // Dark blue color
                     ),
-                    border = ButtonDefaults.outlinedButtonBorder.copy(
-                        brush = androidx.compose.ui.graphics.SolidColor(Color.White)
-                    )
+                    shape = RoundedCornerShape(25.dp)
                 ) {
-                    Text("Vedi i dettagli")
+                    Text(
+                        text = "Vedi i dettagli",
+                        color = Color.White,
+                        fontSize = 14.sp
+                    )
                 }
             }
         }

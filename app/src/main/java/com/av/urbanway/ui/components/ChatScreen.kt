@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,6 +39,7 @@ fun ChatScreen() {
     var showModal by remember { mutableStateOf<ChatMessage?>(null) }
 
     val scope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     // Start with empty chat - let user type first
 
@@ -148,6 +150,8 @@ fun ChatScreen() {
                         IconButton(
                             onClick = {
                                 if (userInput.isNotBlank()) {
+                                    // Dismiss keyboard first
+                                    focusManager.clearFocus()
                                     scope.launch {
                                         chatService.handleUserInput(userInput)
                                         userInput = ""
@@ -219,7 +223,7 @@ private fun ChatMessageItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(start = 70.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.End
             ) {
                 Surface(
@@ -241,7 +245,7 @@ private fun ChatMessageItem(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(start = 70.dp, end = 16.dp),
                 horizontalArrangement = Arrangement.End
             ) {
                 Surface(
