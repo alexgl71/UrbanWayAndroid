@@ -73,17 +73,19 @@ Comprehensive data models for Turin's transport system:
 ### ✅ Completed Components
 
 #### Data Layer (`/data`)
-- **Models** (`ChatModels.kt`): Complete data structures for chat messages, transit data, stops, routes, arrivals
+- **Models** (`ChatModels.kt`): Complete data structures for chat messages, transit data, stops, routes, arrivals, **journey planning**
 - **Repository** (`ChatRepository.kt`): StateFlow-based message management with automatic cleanup and compacting
 - **Services**:
-  - `ChatService.kt`: Orchestrates user interactions and data flow
-  - `HardcodedDataService.kt`: Provides sample Turin transit data
-- **Parser** (`QueryParser.kt`): Natural language processing for Italian queries
+  - `ChatService.kt`: Orchestrates user interactions and data flow for **all 4 query types**
+  - `HardcodedDataService.kt`: Provides sample Turin transit data + **journey planning data**
+- **Parser** (`QueryParser.kt`): Natural language processing for Italian queries including **journey requests**
+- **API Constants** (`ApiJsonConstants.kt`): Real API response JSON for nearby, routes, and **journey planning**
 
 #### UI Layer (`/ui`)
 - **Theme System**: Material 3 implementation with dynamic colors
 - **Chat Interface** (`ChatScreen.kt`): Complete conversational UI with proper chat bubble styling
-- **Bot Cards**: Consistent white card design for all message types (Nearby, RouteDetail, StopDetail)
+- **Bot Cards**: Consistent white card design for **all 4 message types** (Nearby, RouteDetail, StopDetail, **Journey**)
+- **Modal System**: Full-screen detail views for **Nearby, RouteDetail, and Journey** with consistent design
 - **Input System**: Text field with keyboard dismissal and send functionality
 - **MainActivity**: Basic Compose setup with welcome screen
 
@@ -93,9 +95,18 @@ Comprehensive data models for Turin's transport system:
 - **Keyboard Management**: Auto-dismissal when sending messages
 - **Card Consistency**: Unified design language across all bot response cards
 
-### 🚧 In Development
-- **Navigation**: Screen navigation system
+### ✅ Recently Completed (Journey Feature)
+- **Journey Planning**: Complete end-to-end journey planning from Piazza Adriano to Piazza Castello
+- **JourneyBotCard**: Compact/expanded states showing route options and timing
+- **JourneyModal**: Detailed view with multiple route options, step-by-step navigation, and transport icons
+- **Journey Data**: Real API JSON parsing with 5 route options (direct + transfer routes)
+
+### 🚧 Next Development Priorities
+- **UI/UX Polish**: Enhanced visual design, animations, and user experience improvements
+- **Maps Integration**: Interactive maps for routes, stops, and real-time tracking
+- **StopDetail Modal**: Complete stop information with passing routes and schedules
 - **API Integration**: Real Turin transit API connection
+- **Navigation**: Screen navigation system
 
 ## Screenshot Analysis
 
@@ -227,8 +238,8 @@ STANDARD MODAL STRUCTURE:
 ```
 
 #### **Total UI Components: 12 Templates + Shared Components**
-- **Chat Cards**: `NearbyBotCard` ✅, `RouteDetailBotCard` ✅, `StopDetailBotCard` ✅, `JourneyBotCard` (each with compact/expanded states)
-- **Fullscreen Modals**: `NearbyModal` ✅, `RouteDetailModal` ✅, `StopDetailModal`, `JourneyModal`
+- **Chat Cards**: `NearbyBotCard` ✅, `RouteDetailBotCard` ✅, `StopDetailBotCard` ✅, `JourneyBotCard` ✅ (each with compact/expanded states)
+- **Fullscreen Modals**: `NearbyModal` ✅, `RouteDetailModal` ✅, `JourneyModal` ✅, `StopDetailModal` (pending)
 - **Chat Interface**: `ChatScreen` ✅ with proper padding and keyboard management
 - **Shared Components**:
   - `ModalBottomToolbar` ✅ - Reusable bottom toolbar for all modals (🟢 map + ⚫ close buttons)
@@ -243,17 +254,19 @@ message.queryType + message.data (TransitData sealed class)
 ## Next Development Steps
 
 ### Immediate Priorities
-1. **Remaining Templates**: Complete `JourneyBotCard` with dual states
-2. **Missing Modals**: Implement `StopDetailModal` and `JourneyModal`
-3. **Stop Detail Data**: Add real stop detail functionality
-4. **Journey Planning**: Implement journey planning features
+1. **UI/UX Polish**: Enhanced animations, transitions, and visual improvements
+2. **Maps Integration**: Interactive route visualization and stop locations
+3. **Missing Modal**: Complete `StopDetailModal` implementation
+4. **Stop Detail Data**: Add real stop detail functionality and JSON parsing
 
 ### Recent Completions ✅
+- **Journey Feature**: Complete end-to-end journey planning (Piazza Adriano → Piazza Castello)
+- **JourneyBotCard**: Compact/expanded states with real data display
+- **JourneyModal**: Detailed route options with step-by-step navigation
 - **Chat Interface**: Complete conversational UI with proper bubble styling
 - **Message Cleanup**: Automatic removal of previous messages for clean chat flow
 - **Card Consistency**: All bot cards follow unified white design language
-- **Keyboard UX**: Auto-dismissal on message send
-- **Padding System**: Proper left/right alignment for authentic chat feel
+- **API Integration**: Real Turin transport data parsing for all features
 
 ### Future Enhancements
 - **API Integration**: Connect to real Turin transport APIs
