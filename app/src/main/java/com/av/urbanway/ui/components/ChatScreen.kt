@@ -205,6 +205,20 @@ fun ChatScreen() {
                         )
                     }
                 }
+                QueryType.STOPDETAIL -> {
+                    if (message.data is TransitData.StopDetailData) {
+                        StopDetailModal(
+                            data = message.data,
+                            onDismiss = { showModal = null },
+                            onRouteClick = { routeSelection ->
+                                // Close modal first
+                                showModal = null
+                                // Handle route selection via ChatService
+                                chatService.handleModalSelection(routeSelection, QueryType.STOPDETAIL)
+                            }
+                        )
+                    }
+                }
                 QueryType.JOURNEY -> {
                     if (message.data is TransitData.JourneyData) {
                         JourneyModal(
