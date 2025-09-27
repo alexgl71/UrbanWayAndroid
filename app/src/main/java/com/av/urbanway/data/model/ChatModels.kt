@@ -107,6 +107,40 @@ data class ApiDeparture(
     val has_realtime_update: Boolean
 )
 
+// Journey API Response Models (matching the actual journey API structure)
+data class JourneyApiResponse(
+    val journeys: List<ApiJourney>
+)
+
+data class ApiJourney(
+    val type: String,
+    val r1: String,
+    val t1: String,
+    val h1: String,
+    val dep: Int,
+    val arr: Int,
+    val stops: Int,
+    val leg1_board_stop_id: Int,
+    val leg1_board_stop_sequence: Int,
+    val leg1_alight_stop_id: Int,
+    val leg1_alight_stop_sequence: Int,
+    val leg2_board_stop_id: Int?,
+    val leg2_board_stop_sequence: Int?,
+    val leg2_alight_stop_id: Int?,
+    val leg2_alight_stop_sequence: Int?,
+    val start_stop: Int,
+    val start_walk: Double,
+    val transfer_stop: Int?,
+    val r2: String?,
+    val t2: String?,
+    val h2: String?,
+    val end_stop: Int,
+    val end_walk: Double,
+    val transit_min: Int,
+    val walk_min: Int,
+    val total_min: Int
+)
+
 // Internal App Models (for UI)
 data class RouteStop(
     val stopId: String,

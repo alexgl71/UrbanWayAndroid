@@ -205,6 +205,14 @@ fun ChatScreen() {
                         )
                     }
                 }
+                QueryType.JOURNEY -> {
+                    if (message.data is TransitData.JourneyData) {
+                        JourneyModal(
+                            data = message.data,
+                            onDismiss = { showModal = null }
+                        )
+                    }
+                }
                 else -> {
                     // Handle other query types when implemented
                 }
@@ -288,6 +296,16 @@ private fun ChatMessageItem(
                 QueryType.STOPDETAIL -> {
                     if (message.data is TransitData.StopDetailData) {
                         StopDetailBotCard(
+                            data = message.data,
+                            isCompact = message.isCompact,
+                            onViewDetails = onViewDetails,
+                            onTapCompact = onViewDetails  // Same action as "Vedi i dettagli"
+                        )
+                    }
+                }
+                QueryType.JOURNEY -> {
+                    if (message.data is TransitData.JourneyData) {
+                        JourneyBotCard(
                             data = message.data,
                             isCompact = message.isCompact,
                             onViewDetails = onViewDetails,

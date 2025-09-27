@@ -78,9 +78,30 @@ class ChatService(
     }
 
     private fun handleJourneyQuery(userInput: String) {
-        // TODO: Implement when you provide JOURNEY JSON
-        val botResponse = queryParser.generateBotResponse(QueryType.JOURNEY, userInput)
-        // For now, create empty data - will be replaced with real data later
+        // Extract destination from user input or use default
+        val destination = extractDestination(userInput)
+        val origin = "Piazza Adriano"
+
+        val journeyData = dataService.getJourneyData(origin, destination)
+
+        val botResponse = "Ho trovato ${journeyData.routes.size} opzioni di percorso per te"
+
+        chatRepository.addBotMessage(
+            content = botResponse,
+            queryType = QueryType.JOURNEY,
+            data = journeyData,
+            isCompact = false
+        )
+    }
+
+    private fun extractDestination(userInput: String): String {
+        val cleanInput = userInput.lowercase()
+        return when {
+            cleanInput.contains("castello") -> "Piazza Castello"
+            cleanInput.contains("centro") -> "Centro Città"
+            cleanInput.contains("stazione") -> "Stazione Porta Nuova"
+            else -> "Piazza Castello" // Default destination
+        }
     }
 
     private fun handleUnknownQuery(userInput: String) {

@@ -61,10 +61,12 @@ class QueryParser {
             }
             QueryType.STOPDETAIL -> "Informazioni fermata"
             QueryType.JOURNEY -> {
+                val cleanInput = input.lowercase()
                 when {
-                    input.lowercase().contains("stazione") -> "Come arrivare in stazione"
-                    input.lowercase().contains("centro") -> "Percorso per il centro città"
-                    else -> "Percorso"
+                    cleanInput.contains("castello") -> "Percorso dalla posizione attuale a piazza castello"
+                    cleanInput.contains("stazione") -> "Percorso dalla posizione attuale alla stazione"
+                    cleanInput.contains("centro") -> "Percorso dalla posizione attuale al centro città"
+                    else -> "Percorso dalla posizione attuale a piazza castello"
                 }
             }
         }

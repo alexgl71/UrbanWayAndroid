@@ -25,6 +25,10 @@ class HardcodedDataService {
         }
     }
 
+    fun getJourneyData(origin: String, destination: String): TransitData.JourneyData {
+        return parseJourneyFromJson(ApiJsonConstants.JOURNEY_PIAZZA_ADRIANO_JSON, origin, destination)
+    }
+
     private fun parseRouteDetailFromJson(routeId: String, jsonString: String): TransitData.RouteDetailData {
         try {
             // Parse JSON like a real API response
@@ -210,7 +214,140 @@ class HardcodedDataService {
         )
     }
 
+    private fun parseJourneyFromJson(jsonString: String, origin: String, destination: String): TransitData.JourneyData {
+        try {
+            val jsonObject = JSONObject(jsonString)
+            val journeysArray = jsonObject.getJSONArray("journeys")
+            val journeyRoutes = mutableListOf<JourneyRoute>()
 
+            for (i in 0 until journeysArray.length()) {
+                val journeyObj = journeysArray.getJSONObject(i)
+                val steps = mutableListOf<JourneyStep>()
 
+                // Add initial walk step
+                val startWalk = journeyObj.getDouble("start_walk")
+                if (startWalk > 0) {
+                    steps.add(
+                        JourneyStep(
+                            type = StepType.WALK,
+                            duration = journeyObj.getInt("walk_min") / 2, // Approximate start walk duration
+                            walkingDistance = startWalk.toInt()
+                        )
+                    )
+                }
 
+                // Add first route step
+                val route1 = createRouteFromApiId(journeyObj.getString("r1"))
+                val fromStop1 = createStopFromId(journeyObj.getInt("leg1_board_stop_id"))
+                val toStop1 = createStopFromId(journeyObj.getInt("leg1_alight_stop_id"))
+
+                steps.add(
+                    JourneyStep(
+                        type = getStepTypeFromRoute(route1),
+                        route = route1,
+                        fromStop = fromStop1,
+                        toStop = toStop1,
+                        duration = journeyObj.getInt("transit_min"),
+                        walkingDistance = 0
+                    )
+                )
+
+                // Add transfer step if it's a transfer journey
+                if (journeyObj.getString("type") == "transfer" && !journeyObj.isNull("r2")) {
+                    val route2 = createRouteFromApiId(journeyObj.getString("r2"))
+                    val fromStop2 = createStopFromId(journeyObj.getInt("leg2_board_stop_id"))
+                    val toStop2 = createStopFromId(journeyObj.getInt("leg2_alight_stop_id"))
+
+                    steps.add(
+                        JourneyStep(
+                            type = getStepTypeFromRoute(route2),
+                            route = route2,
+                            fromStop = fromStop2,
+                            toStop = toStop2,
+                            duration = journeyObj.getInt("transit_min") / 2, // Approximate second leg duration
+                            walkingDistance = 0
+                        )
+                    )
+                }
+
+                // Add final walk step
+                val endWalk = journeyObj.getDouble("end_walk")
+                if (endWalk > 0) {
+                    steps.add(
+                        JourneyStep(
+                            type = StepType.WALK,
+                            duration = journeyObj.getInt("walk_min") / 2, // Approximate end walk duration
+                            walkingDistance = endWalk.toInt()
+                        )
+                    )
+                }
+
+                journeyRoutes.add(
+                    JourneyRoute(
+                        steps = steps,
+                        totalDuration = journeyObj.getInt("total_min"),
+                        totalWalking = journeyObj.getInt("walk_min")
+                    )
+                )
+            }
+
+            // Create origin and destination locations
+            val originLocation = Location(45.071542060347255, 7.6548553701378355, origin)
+            val destinationLocation = Location(45.064920, 7.695270, destination) // Example destination
+
+            return TransitData.JourneyData(
+                origin = originLocation,
+                destination = destinationLocation,
+                routes = journeyRoutes,
+                duration = journeyRoutes.minOfOrNull { it.totalDuration } ?: 0,
+                walkingTime = journeyRoutes.minOfOrNull { it.totalWalking } ?: 0
+            )
+        } catch (e: Exception) {
+            // Fallback in case of parsing error
+            return getDefaultJourneyData(origin, destination)
+        }
+    }
+
+    private fun createRouteFromApiId(routeId: String): Route {
+        return when (routeId) {
+            "55U" -> Route("55U", "55", TransportType.BUS, "#FF6B35", "VANCHIGLIA")
+            "56U" -> Route("56U", "56", TransportType.BUS, "#FF6B35", "MADONNA DEL PILONE")
+            "16CDU" -> Route("16CDU", "16", TransportType.BUS, "#2196F3", "CIRCOLARE DESTRA")
+            "16CSU" -> Route("16CSU", "16", TransportType.BUS, "#2196F3", "CIRCOLARE SINISTRA")
+            "68U" -> Route("68U", "68", TransportType.BUS, "#4CAF50", "BORGATA ROSA")
+            "9U" -> Route("9U", "9", TransportType.BUS, "#9C27B0", "SAN SALVARIO")
+            "13U" -> Route("13U", "13", TransportType.BUS, "#FF5722", "BORGO PO")
+            "61U" -> Route("61U", "61", TransportType.BUS, "#795548", "SAN MAURO")
+            else -> Route(routeId, routeId, TransportType.BUS, "#757575", "GENERICO")
+        }
+    }
+
+    private fun createStopFromId(stopId: Int): Stop {
+        // Create simplified stop data - in real app this would be from a stops database
+        return Stop(
+            id = stopId.toString(),
+            name = "Fermata $stopId",
+            location = Location(45.071542, 7.654855, "Fermata $stopId"),
+            routes = emptyList()
+        )
+    }
+
+    private fun getStepTypeFromRoute(route: Route): StepType {
+        return when (route.type) {
+            TransportType.BUS -> StepType.BUS
+            TransportType.TRAM -> StepType.TRAM
+            TransportType.METRO -> StepType.METRO
+            TransportType.TRAIN -> StepType.TRAIN
+        }
+    }
+
+    private fun getDefaultJourneyData(origin: String, destination: String): TransitData.JourneyData {
+        return TransitData.JourneyData(
+            origin = Location(45.071542, 7.654855, origin),
+            destination = Location(45.064920, 7.695270, destination),
+            routes = emptyList(),
+            duration = 0,
+            walkingTime = 0
+        )
+    }
 }
