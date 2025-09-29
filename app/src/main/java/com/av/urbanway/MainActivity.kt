@@ -14,7 +14,6 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.av.urbanway.ui.theme.UrbanWayTheme
-import com.av.urbanway.ui.components.ChatScreen
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -22,7 +21,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             UrbanWayTheme {
-                ChatScreen()
+                WelcomeScreen()
             }
         }
     }
@@ -42,16 +41,16 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Text(
-                text = "Welcome to UrbanWay!",
-                fontSize = 24.sp,
+                text = "UrbanWay",
+                fontSize = 32.sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
+            Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "Your fresh start Kotlin Android app",
-                fontSize = 16.sp,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(top = 8.dp)
+                text = "Ready for a fresh start",
+                fontSize = 18.sp,
+                color = MaterialTheme.colorScheme.onSurface
             )
         }
     }
